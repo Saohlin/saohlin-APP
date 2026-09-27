@@ -1,0 +1,351 @@
+import type { Plural } from './types';
+
+/**
+ * Czech is the product language, the source of truth and the fallback.
+ * Strings marked DRAFT are placeholders pending approved copy.
+ */
+export const cs = {
+  brand: {
+    name: 'SAOHLIN',
+    tagline: 'Spiritual Support™',
+    ai: 'CLAUDIA AI',
+    createdBy: 'Created by Claudia Simon',
+    copyright: '© 2026 SAOHLIN. Všechna práva vyhrazena.',
+  },
+
+  nav: {
+    chat: 'CLAUDIA AI',
+    cards: 'Výklad karet',
+    journal: 'Deník',
+    profile: 'Profil',
+    menu: 'Menu',
+    settings: 'Nastavení',
+    writeToMe: 'Napiš mi',
+    support: 'Podpora',
+  },
+
+  common: {
+    enter: 'Vstoupit',
+    continue: 'Pokračovat',
+    next: 'Další',
+    back: 'Zpět',
+    skip: 'Přeskočit',
+    save: 'Uložit',
+    cancel: 'Zrušit',
+    delete: 'Smazat',
+    tryAgain: 'Zkusit znovu',
+    close: 'Zavřít',
+    search: 'Hledat…',
+    showAll: 'Zobrazit vše',
+    loading: 'Načítám…',
+    optional: 'nepovinné',
+    done: 'Hotovo',
+  },
+
+  auth: {
+    createAccount: 'Vytvořit účet',
+    signUp: 'Registrovat',
+    signIn: 'Přihlásit se',
+    signOut: 'Odhlásit se',
+    firstName: 'Jméno',
+    lastName: 'Příjmení',
+    email: 'E-mail',
+    password: 'Heslo',
+    firstNamePlaceholder: 'Napiš své jméno…',
+    lastNamePlaceholder: 'Napiš své příjmení…',
+    emailPlaceholder: 'Napiš svůj email…',
+    passwordPlaceholder: 'Vytvoř své heslo…',
+    forgotPassword: 'Zapomenuté heslo',
+    resetPassword: 'Obnovit heslo',
+    haveAccount: 'Už máš svůj účet?',
+    showPassword: 'Zobrazit heslo',
+    hidePassword: 'Skrýt heslo',
+    verifyEmail: 'Ověř svůj e-mail',
+    resend: 'Poslat znovu',
+  },
+
+  onboarding: {
+    profileTitle: 'Tvůj profil',
+    profileSubtitle: 'Čím lépe tě poznám, o to přesněji tě dokážu vést.',
+    profileNote: 'Svoje informace můžeš kdykoliv doplnit i ve svém profilu.',
+    howToAddress: 'Jak tě mám oslovovat',
+    dateOfBirth: 'Datum narození',
+    dateFormat: 'DD . MM . YYYY',
+    gender: 'Pohlaví',
+    genderPlaceholder: 'Vyber jednu možnost',
+    deeperTitle: 'Pojďme o krok dál',
+    deeperSubtitle: 'Stačí pár vět. Pomůže mi to lépe ti rozumět.',
+    stepOf: '{current} z {total}',
+    work: 'Tvoje práce',
+    workPlaceholder: 'Napiš svou práci nebo oblast, ve které působíš…',
+    situation: 'Aktuální životní situace',
+    blocking: 'Co tě nejvíc brzdí',
+    visions: 'Tvé vize a přání',
+    situationPlaceholder: 'Napiš, co se v tvém životě právě děje…',
+    blockingPlaceholder: 'Napiš, co tě teď nejvíc brzdí…',
+    visionsPlaceholder: 'Napiš, po čem nejvíc toužíš…',
+    genderFemale: 'Žena',
+    genderMale: 'Muž',
+    genderOther: 'Jiné',
+    genderUnspecified: 'Nechci uvádět',
+    vocativeTitle: 'Oslovení',
+    vocativeQuestion: 'Budu ti říkat „{vocative}“. Sedí to tak?',
+    vocativeNote: 'Můžeš to upravit, chci tě oslovovat správně.',
+    vocativeLabel: 'Oslovení',
+    consentPrefix: 'Kliknutím na „POKRAČOVAT“ souhlasíte s našimi',
+    consentTerms: 'Podmínkami používání',
+    consentAnd: 'a',
+    consentPrivacy: 'Zásadami ochrany osobních údajů.',
+    nameRequired: 'Napiš mi prosím, jak tě mám oslovovat.',
+    workPrompt:
+      'Popiš mi svoji pracovní situaci. Baví tě tvoje práce? Kam se chceš posunout a jaký je tvůj aktuální cíl? Napiš mi jen to, co chceš sdílet.',
+    deeperNoteEdit: 'Svoje údaje můžeš kdykoliv změnit ve svém profilu.',
+    deeperNoteMore: 'Čím víc mi o sobě napíšeš, tím přesněji tě dokážu vést.',
+  },
+  zodiac: {
+    aries: 'Beran',
+    taurus: 'Býk',
+    gemini: 'Blíženci',
+    cancer: 'Rak',
+    leo: 'Lev',
+    virgo: 'Panna',
+    libra: 'Váhy',
+    scorpio: 'Štír',
+    sagittarius: 'Střelec',
+    capricorn: 'Kozoroh',
+    aquarius: 'Vodnář',
+    pisces: 'Ryby',
+  },
+
+  consent: {
+    // DRAFT
+    title: 'Než začneme',
+    aiNoticeTitle: 'Informace o CLAUDIA AI',
+    aiNotice:
+      'CLAUDIA AI je umělá inteligence vytvořená Claudií Simon a jejím týmem. Nekomunikuješ přímo s Claudií.',
+    dataConsent:
+      'Souhlasím se zpracováním informací o mé životní situaci, které sdílím s CLAUDIA AI.',
+    termsConsent: 'Přečetl/a jsem Podmínky používání a Zásady ochrany osobních údajů.',
+    required: 'Bez tohoto souhlasu bohužel nemůžeme pokračovat.',
+  },
+
+  // Line breaks in this block are intentional and match the design.
+  welcome: {
+    greeting: 'Vítá tě',
+    subtitle: 'Tvůj osobní spirituální průvodce.',
+    benefitSupport: 'Neomezená podpora a výklady karet\npro tvoji situaci.',
+    benefitMemory: 'CLAUDIA AI™ si bude pamatovat\ntvoji cestu a růst.',
+    benefitJournal: 'Deník a prostor pro sebereflexi.',
+    benefitMantras: 'Mantry na míru pro tvoji situaci.',
+    gift:
+      'Svoji první kartu a rozbor máš ode mě zdarma jako dárek. ' +
+      'Chci si být jistá, že se ti bude aplikace líbit.',
+    disclaimer:
+      'Saohlin má informační a seberozvojový charakter. ' +
+      'Neslouží jako náhrada odborné péče.',
+    startConversation: 'Začít rozhovor',
+  },
+
+  chat: {
+    title: 'CLAUDIA AI',
+    greeting: 'Ahoj, {name}.',
+    prompt: 'Co máš dnes na srdci?',
+    startConversation: 'Začít rozhovor',
+    newConversation: 'Nový rozhovor',
+    history: 'Historie rozhovorů',
+    composerPlaceholder: 'Napiš svoji zprávu…',
+    expandComposer: 'Zvětšit pole pro psaní',
+    collapseComposer: 'Zmenšit pole pro psaní',
+    thinking: 'CLAUDIA AI přemýšlí…',
+    listen: 'Poslechnout',
+    copy: 'Kopírovat',
+    copied: 'Zkopírováno',
+    voiceInput: 'Hlasová zpráva',
+    stopRecording: 'Zastavit nahrávání',
+    send: 'Odeslat',
+    you: 'Ty',
+  },
+
+  weekday: {
+    mon: 'Po',
+    tue: 'Út',
+    wed: 'St',
+    thu: 'Čt',
+    fri: 'Pá',
+    sat: 'So',
+    sun: 'Ne',
+  },
+  journal: {
+    title: 'Deník',
+    subtitle: 'Tvůj prostor. Tvoje myšlenky, emoce, uvědomění a růst.',
+    today: 'Dnes',
+    todayPrompt: 'Jak se dnes cítíš?',
+    write: 'Zapsat myšlenky',
+    newEntry: 'Nový zápis',
+    editEntry: 'Upravit zápis',
+    deleteEntry: 'Smazat zápis',
+    archive: 'Archiv deníku',
+    entryPlaceholder: 'Napiš, co máš na srdci…',
+    entryRequired: 'Napiš prosím zápis, než ho uložíš.',
+    shareWithAi: 'Sdílet s CLAUDIA AI',
+    shareHint: 'Nesdílený zápis zůstává jen tobě. CLAUDIA AI ho nikdy nečte.',
+    unsavedTitle: 'Máš neuložený zápis',
+    unsavedMessage: 'Chceš ho uložit, než odejdeš?',
+  },
+
+  cards: {
+    title: 'Výklad karet',
+    guides: 'Průvodci',
+    guide: 'Průvodce',
+    cardOfTheDay: 'Průvodce na dnešní den',
+    draw: 'Vytáhnout kartu dne',
+    forYou: 'Karta pro tebe.',
+    drawPrompt: 'Mysli na svoji otázku nebo situaci a vyber si jednu kartu.',
+    trustIntuition: 'Důvěřuj své intuici.',
+    meaning: 'Význam karty',
+    askAi: 'Zeptat se CLAUDIA AI',
+    wantReading: 'Chci svůj výklad od CLAUDIA AI',
+    library: 'Všichni průvodci',
+    drawHistory: 'Historie výkladů',
+    faceDown: 'Otočená karta',
+    moreBelow: 'Posuň dolů pro další karty',
+    // Placeholder until the final guide descriptions arrive.
+    descriptionPending: 'Popis tohoto průvodce doplníme už brzy.',
+  },
+
+  profile: {
+    title: 'Profil',
+    edit: 'Upravit profil',
+    memory: 'Paměť',
+    memoryTitle: 'Co si o mně CLAUDIA AI pamatuje',
+    memoryEmpty: 'Zatím si nepamatuju nic konkrétního. To se změní, jak se budeme poznávat.',
+    forgetOne: 'Zapomenout tuhle věc',
+    forgetAll: 'Zapomenout všechno',
+    forgetAllTitle: 'Zapomenout všechno?',
+    forgetAllMessage: 'CLAUDIA AI zapomene všechno, co o tobě ví. Tohle nejde vzít zpět.',
+  },
+
+  settings: {
+    title: 'Nastavení',
+    notifications: 'Oznámení',
+    notificationsDenied: 'Oznámení máš vypnutá v nastavení telefonu.',
+    voice: 'Přehrávání hlasem',
+    haptics: 'Vibrace',
+    language: 'Jazyk',
+    // Development only.
+    languageDevNote: 'Vývojářské nastavení. V produkci se nezobrazuje.',
+  },
+
+  membership: {
+    title: 'Členství',
+    activate: 'Aktivovat členství',
+    manage: 'Spravovat členství',
+    restore: 'Obnovit nákup',
+    perMonth: '{price} / měsíc',
+    renewsOn: 'Obnoví se {date}',
+    cancel: 'Zrušit členství',
+    // DRAFT: the free-allowance unit is not final.
+    paywallTitle: 'Pokračujme spolu',
+    paywallMessage: 'Tvůj výklad zdarma jsi využila. Členstvím získáš CLAUDIA AI naplno.',
+    billingProblemTitle: 'Platba neproběhla',
+    billingProblemMessage: 'Zkontroluj prosím způsob platby, ať o přístup nepřijdeš.',
+    // DRAFT: membership benefits copy pending.
+    noCommitment: 'Žádný závazek.',
+  },
+
+  legal: {
+    privacy: 'Zásady ochrany osobních údajů',
+    terms: 'Podmínky používání',
+    aiDisclosure: 'Informace o CLAUDIA AI',
+    exportData: 'Exportovat moje data',
+    deleteAccount: 'Smazat můj účet',
+    withdrawConsent: 'Odvolat souhlas',
+    deleteAccountTitle: 'Opravdu smazat účet?',
+    deleteAccountMessage:
+      'Smažeme všechno: rozhovory, deník, výklady i to, co si o tobě CLAUDIA AI pamatuje. Tohle nejde vzít zpět.',
+  },
+
+  feedback: {
+    title: 'Napiš mi',
+    heading: 'Feedback',
+    intro:
+      'Napiš mi, co ti na aplikaci funguje, co by se dalo zlepšit, nebo jaký máš nápad.',
+    prompt: 'Napiš mi svoji zkušenost se CLAUDIA AI',
+    placeholder: 'Napiš svou zprávu…',
+    send: 'Odeslat zprávu',
+    or: 'nebo',
+    orWrite: 'Nebo mi napiš na:',
+    sent: 'Děkuju. Tvoje zpráva dorazila.',
+    messageRequired: 'Napiš prosím zprávu, než ji odešleš.',
+    body1:
+      'Na vývoji této aplikace neustále pracuji. AI pravidelně obohacuji o svůj nový obsah, poznatky, videa i informační zdroje, aby ti mohla předávat co nejpřesnější a nejaktuálnější odpovědi.',
+    // Not currently shown on the feedback screen; kept for later use.
+    body2:
+      'Přesto chci připomenout, že se stále jedná o technologii. Nenahrazuje plnohodnotnou konverzaci s mojí reálnou osobou.',
+    body3:
+      'Pokud budeš mít pocit, že AI odpověděla nepřesně, něco nefunguje podle očekávání nebo tě napadne cokoliv, co by mohlo aplikaci posunout dál, budu moc ráda, když mi napíšeš.',
+    body4:
+      'Každou zprávu osobně čtu a tvoje zpětná vazba je pro mě nesmírně cenná. Díky ní může být CLAUDIA AI každý den o něco lepší.',
+  },
+
+  states: {
+    // DRAFT
+    emptyJournalTitle: 'Zatím tu nic není',
+    emptyJournalMessage: 'První zápis bývá ten nejtěžší. Stačí jedna věta.',
+    emptyHistoryTitle: 'Zatím žádné rozhovory',
+    emptyHistoryMessage: 'Až si spolu popovídáme, najdeš tu všechno zpátky.',
+    emptyDrawsTitle: 'Zatím žádné výklady',
+    emptyDrawsMessage: 'Vytáhni si svého prvního průvodce.',
+    errorTitle: 'Něco se nepovedlo',
+    errorMessage: 'Zkus to prosím znovu. Pokud to bude pokračovat, napiš mi.',
+    offlineTitle: 'Nejsi připojená k internetu',
+    offlineMessage: 'CLAUDIA AI potřebuje připojení. Až budeš online, můžeme pokračovat.',
+    updateTitle: 'Je k dispozici nová verze',
+    updateMessage: 'Aktualizuj aplikaci, aby všechno fungovalo tak, jak má.',
+    update: 'Aktualizovat',
+    maintenanceTitle: 'Chvilku pracujeme na aplikaci',
+    maintenanceMessage: 'Za chvíli jsme zpátky. Děkuju za trpělivost.',
+    maintenanceUntil: 'Budeme zpátky {until}. Děkuju za trpělivost.',
+    // Warm tone; these are not errors.
+    limitTitle: 'Na dnešek to stačí',
+    limitMessage: 'Dneska jsme si povídaly opravdu dlouho. Dopřej si pauzu a vrať se zítra.',
+  },
+
+  validation: {
+    required: 'Tohle pole je potřeba vyplnit.',
+    emailInvalid: 'Zkontroluj prosím tvar e-mailu.',
+    emailTaken: 'Na tenhle e-mail už účet existuje. Přihlas se.',
+    passwordShort: 'Heslo potřebuje aspoň 8 znaků.',
+    passwordWrong: 'E-mail nebo heslo nesedí.',
+    linkExpired: 'Platnost odkazu vypršela. Pošli si nový.',
+    networkFailed: 'Nepodařilo se připojit. Zkus to znovu.',
+  },
+
+  trial: {
+    remaining: {
+      one: 'Zbývá ti {count} odpověď zdarma',
+      few: 'Zbývají ti {count} odpovědi zdarma',
+      other: 'Zbývá ti {count} odpovědí zdarma',
+    } as Plural,
+    lastOne: 'Poslední odpověď zdarma',
+  },
+
+  tone: {
+    success: 'Hotovo',
+    warning: 'Upozornění',
+    error: 'Chyba',
+    info: 'Informace',
+  },
+
+  a11y: {
+    back: 'Zpět',
+    close: 'Zavřít',
+    menu: 'Otevřít menu',
+    action: 'Akce',
+    more: 'Další možnosti',
+    bookmark: 'Uložit',
+    search: 'Hledat',
+  },
+};
+
+export type Dictionary = typeof cs;
