@@ -29,6 +29,23 @@ In the dashboard, also check:
 - Authentication → Emails: custom SMTP (the built-in sender is rate-limited and not for production).
 - Authentication → Attack Protection: leaked password protection and CAPTCHA.
 
+## Knowledge base
+
+Claudia's material lives in the `kb` schema (service role only). It is loaded
+from the corpus the Python pipeline already built and embedded, so loading
+costs no OpenAI credit:
+
+```bash
+pip install "psycopg[binary]" numpy
+export DATABASE_URL=postgresql://postgres:...@db.PROJECT.supabase.co:5432/postgres
+python supabase/seed/load_kb.py --base "/path/to/AI APP"
+python supabase/seed/check_retrieval_parity.py --base "/path/to/AI APP"
+```
+
+The parity check runs the 78-case Czech test set through the Python pipeline
+and the database side by side and fails on any difference. The corpus is her
+intellectual property and stays out of this repository.
+
 ## Tests
 
 ```bash
