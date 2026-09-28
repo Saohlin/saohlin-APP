@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 
 import {
+  Banner,
   GlassCard,
   Icon,
   LiquidButton,
@@ -13,6 +14,7 @@ import {
 } from '../../components/ui';
 import { useSession } from '../../auth';
 import type { DeeperAnswers } from '../../auth';
+import { authErrorKey } from '../../lib/authErrors';
 import { useTheme, type as typeScale } from '../../theme';
 import { useI18n } from '../../i18n';
 import type { Dictionary, Path } from '../../i18n';
@@ -49,6 +51,8 @@ export default function Deeper() {
   const { height } = useWindowDimensions();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<string[]>(['', '', '', '']);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
 
   const last = step === STEPS.length - 1;
   const prompt = STEPS[step].prompt;
@@ -70,8 +74,17 @@ export default function Deeper() {
       const v = answers[i].trim();
       if (v) answers_[s.key] = v;
     });
-    await saveDeeper(answers_);
-    router.push('/welcome');
+    if (busy) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await saveDeeper(answers_);
+      router.push('/welcome');
+    } catch (e) {
+      setError(t(authErrorKey(e)));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -80,8 +93,10 @@ export default function Deeper() {
       footer={
         /* Lifts the button off the home indicator. */
         <View className="pb-lg">
+        {error ? <Banner tone="warning" message={error} className="mb-md" /> : null}
         <LiquidButton
           title={t(last ? 'common.continue' : 'common.next')}
+          loading={last && busy}
           // The last step goes to the welcome screen; onboarding is completed there,
           // otherwise the guard would redirect straight to chat.
           onPress={() => (last ? finish() : setStep((s) => s + 1))}

@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { czechVocative, useSession, zodiacFor, type Gender } from '../auth';
 import {
+  Banner,
   DateField,
   LiquidButton,
   ListRow,
@@ -17,6 +18,8 @@ import {
   useDatePicker,
 } from '../components/ui';
 import { useI18n } from '../i18n';
+import { authErrorKey } from '../lib/authErrors';
+import { MIN_AGE } from '../lib/config';
 import type { Dictionary, Path } from '../i18n';
 
 /**
@@ -50,10 +53,16 @@ const DEV_NAME = 'Tereza';
 
 const DOB_DEFAULT = new Date(1990, 0, 1);
 const DOB_EARLIEST = new Date(1900, 0, 1);
+/** Latest allowed birth date: users must be at least MIN_AGE. */
+const dobLatest = () => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - MIN_AGE);
+  return d;
+};
 
 export default function ProfileSetup() {
   const { t } = useI18n();
-  const { grantConsent, saveProfile } = useSession();
+  const { session, grantConsent, saveProfile } = useSession();
   const router = useRouter();
   const [displayName, setDisplayName] = useState('');
   const [dob, setDob] = useState<string>();
@@ -63,17 +72,19 @@ export default function ProfileSetup() {
    * empty name highlights the field instead.
    */
   const [submitted, setSubmitted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
 
   const [genderOpen, setGenderOpen] = useState(false);
 
-  /** Native date picker; `maximumDate` rules out future dates. */
+  /** Native date picker; `maximumDate` enforces the minimum age. */
   const dobPicker = useDatePicker({
     value: dob,
     onChange: setDob,
     title: t('onboarding.dateOfBirth'),
     initial: DOB_DEFAULT,
     minimumDate: DOB_EARLIEST,
-    maximumDate: new Date(),
+    maximumDate: dobLatest(),
   });
 
   const genderLabel = GENDERS.find((g) => g.value === gender);
@@ -84,16 +95,27 @@ export default function ProfileSetup() {
       setSubmitted(true);
       return;
     }
-    // Consent first, so it's never attached to a profile that failed to save.
-    await grantConsent();
-    await saveProfile({
-      displayName: name,
-      vocative: czechVocative(name),
-      dateOfBirth: dob,
-      gender,
-      zodiac: zodiacFor(dob),
-    });
-    router.replace('/sign-up');
+    if (busy) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      // Consent first, so it's never attached to a profile that failed to save.
+      await grantConsent();
+      await saveProfile({
+        displayName: name,
+        vocative: czechVocative(name),
+        dateOfBirth: dob,
+        gender,
+        zodiac: zodiacFor(dob),
+      });
+      // Before an account exists this continues to registration; an existing
+      // account missing its profile is routed onward by the guards instead.
+      if (!session) router.replace('/sign-up');
+    } catch (e) {
+      setError(t(authErrorKey(e)));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -101,7 +123,8 @@ export default function ProfileSetup() {
       scroll
       footer={
         <View className="pb-xxl">
-          <LiquidButton title={t('common.continue')} onPress={commit} />
+          {error ? <Banner tone="warning" message={error} className="mb-md" /> : null}
+          <LiquidButton title={t('common.continue')} loading={busy} onPress={commit} />
           <Text variant="micro" tone="tertiary" center className="pt-md">
             {t('onboarding.consentPrefix')}{' '}
             <Text variant="micro" tone="tertiary" className="underline" onPress={() => router.push('/legal/terms')}>

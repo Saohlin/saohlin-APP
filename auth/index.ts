@@ -1,5 +1,6 @@
 export { SessionProvider, useSession } from './SessionProvider';
 export {
+  HOME_FOR,
   RequireAuth,
   RequireGuest,
   RequireOnboarded,
@@ -14,6 +15,7 @@ export type {
   OnboardingState,
   Profile,
   Session,
+  UserSettings,
 } from './types';
 export { czechVocative } from './vocative';
 export { zodiacFor, type ZodiacSign } from './zodiac';

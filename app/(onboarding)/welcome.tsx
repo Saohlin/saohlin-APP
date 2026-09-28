@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { View } from 'react-native';
 
-import { GlassCard, Icon, LiquidButton, Screen, Text, Wordmark } from '../../components/ui';
+import { Banner, GlassCard, Icon, LiquidButton, Screen, Text, Wordmark } from '../../components/ui';
 import { useI18n } from '../../i18n';
 import type { Dictionary, Path } from '../../i18n';
 import { useSession } from '../../auth';
+import { authErrorKey } from '../../lib/authErrors';
 import { useTheme, type as typeScale } from '../../theme';
 
 /**
@@ -44,6 +46,21 @@ export default function Welcome() {
   const { t } = useI18n();
   const { completeDeeper } = useSession();
   const { colors } = useTheme();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  // Completing onboarding flips the status to ready; the guards then open the chat.
+  const start = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await completeDeeper();
+    } catch (e) {
+      setError(t(authErrorKey(e)));
+      setBusy(false);
+    }
+  };
 
   return (
     <Screen scroll>
@@ -105,9 +122,11 @@ export default function Welcome() {
 
       {/* Inline rather than pinned to the footer, to keep the space below. */}
       <View style={{ marginTop: M.giftToCta }}>
+        {error ? <Banner tone="warning" message={error} className="mb-md" /> : null}
         <LiquidButton
           title={t('welcome.startConversation')}
-          onPress={completeDeeper}
+          loading={busy}
+          onPress={start}
           accessory={<Icon name="send" size={20} color={colors.textStrong} />}
         />
       </View>

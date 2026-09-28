@@ -5,20 +5,20 @@ import { View } from 'react-native';
 import { useSession } from '../../auth';
 import { LiquidButton, Screen, Text, TextButton, TextField, Title } from '../../components/ui';
 import { useI18n } from '../../i18n';
+import { authErrorKey, looksLikeEmail, passwordMeetsPolicy } from '../../lib/authErrors';
+import { EMAIL_VERIFICATION_REQUIRED } from '../../lib/config';
 
 /**
- * Create account. Profile answers and consent given earlier in onboarding are
- * sent with the sign-up request, so the account is created with them attached.
+ * Create account: email and password only. The name was already asked on the
+ * profile screen; it and the consent are sent with the sign-up request.
  */
-type Field = 'firstName' | 'lastName' | 'email' | 'password';
+type Field = 'email' | 'password';
 
 export default function SignUp() {
   const { t } = useI18n();
   const { signUp } = useSession();
   const router = useRouter();
 
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -26,21 +26,22 @@ export default function SignUp() {
 
   const submit = async () => {
     const next: Partial<Record<Field, string>> = {};
-    if (!firstName.trim()) next.firstName = t('validation.required');
-    if (!lastName.trim()) next.lastName = t('validation.required');
-    if (!email.includes('@')) next.email = t('validation.emailInvalid');
-    if (password.length < 8) next.password = t('validation.passwordShort');
+    if (!looksLikeEmail(email)) next.email = t('validation.emailInvalid');
+    if (!passwordMeetsPolicy(password)) next.password = t('validation.passwordShort');
     setErrors(next);
-    if (Object.keys(next).length) return;
+    if (Object.keys(next).length || busy) return;
+
     setBusy(true);
     try {
-      await signUp(email, password, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-      });
-      router.replace('/deeper');
-    } catch {
-      setErrors({ password: t('validation.networkFailed') });
+      const needsVerification = await signUp(email, password);
+      // Otherwise the new session routes onward through the guards.
+      if (needsVerification) {
+        if (EMAIL_VERIFICATION_REQUIRED) router.replace('/verify-email');
+        else setErrors({ password: t('validation.confirmationStillOn') });
+      }
+    } catch (e) {
+      const key = authErrorKey(e);
+      setErrors(key === 'validation.emailInvalid' ? { email: t(key) } : { password: t(key) });
     } finally {
       setBusy(false);
     }
@@ -49,6 +50,7 @@ export default function SignUp() {
   return (
     <Screen
       scroll
+      avoidKeyboard
       footer={
         <View className="gap-sm">
           <LiquidButton title={t('auth.signUp')} loading={busy} onPress={submit} />
@@ -66,31 +68,15 @@ export default function SignUp() {
 
       <View className="flex-1 justify-center gap-xxl pt-xl">
         <TextField
-          label={t('auth.firstName')}
-          placeholder={t('auth.firstNamePlaceholder')}
-          value={firstName}
-          onChangeText={setFirstName}
-          autoCapitalize="words"
-          error={errors.firstName}
-          textContentType="givenName"
-        />
-        <TextField
-          label={t('auth.lastName')}
-          placeholder={t('auth.lastNamePlaceholder')}
-          value={lastName}
-          onChangeText={setLastName}
-          autoCapitalize="words"
-          error={errors.lastName}
-          textContentType="familyName"
-        />
-        <TextField
           label={t('auth.email')}
           placeholder={t('auth.emailPlaceholder')}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
+          autoCorrect={false}
           keyboardType="email-address"
           textContentType="emailAddress"
+          autoComplete="email"
           error={errors.email}
         />
         <TextField
@@ -100,6 +86,8 @@ export default function SignUp() {
           onChangeText={setPassword}
           password
           textContentType="newPassword"
+          autoComplete="new-password"
+          hint={t('auth.passwordHint')}
           error={errors.password}
         />
       </View>

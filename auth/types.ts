@@ -65,6 +65,12 @@ export type EntitlementHint = {
   trialTotal: number;
 };
 
+export type UserSettings = {
+  notifications: boolean;
+  voicePlayback: boolean;
+  haptics: boolean;
+};
+
 export type AuthStatus =
   | 'restoring'
   | 'guest'

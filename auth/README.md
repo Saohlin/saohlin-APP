@@ -9,13 +9,14 @@ app/
   index.tsx                  splash + entry
   intro.tsx                  welcome video
   profile-setup.tsx          onboarding part 1 (profile + terms)
-  verify-email.tsx           signed in but not verified, so outside the groups
+  verify-email.tsx           registered, waiting for email confirmation
+  auth-callback.tsx          opened from the confirmation email
+  reset-password.tsx         opened from the reset email
 
   (auth)/          RequireGuest
     sign-up.tsx
     sign-in.tsx
     forgot-password.tsx
-    reset-password.tsx       opened from the reset link
 
   (onboarding)/    RequireSessionOnly
     deeper.tsx               onboarding part 2 (four questions)
@@ -48,8 +49,8 @@ doesn't navigate by itself; the guards route from the new status.
   can't skip ahead to the deeper questions before consent.
 - `RequirePaidRoute` decides what to show, never what to allow. Entitlement is
   checked on the server for every message; never use it to guard data or AI calls.
-- `SessionProvider` mirrors server state. Network calls are stubbed with `TODO`s
-  until the backend is connected.
-- The session is stored in the device keychain (`expo-secure-store`), never in
-  plain AsyncStorage.
+- `SessionProvider` mirrors server state from Supabase (`get_me`); the backend enforces access.
+- Sign-up requires email confirmation. The profile and consent collected before
+  registration are sent with the sign-up call and stored server-side by a trigger.
+- The session is encrypted with a key kept in the device keychain (`lib/secureStorage.ts`).
 - The splash stays up while the session restores, so there's no flash of sign-in.

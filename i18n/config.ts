@@ -4,10 +4,11 @@
  */
 export const LANGUAGE_SWITCH_VISIBLE = true;
 
-// Always Czech rather than the device locale.
-export const DEFAULT_LANGUAGE = 'cs' as const;
-
 export type Language = 'cs' | 'en';
+
+// English in development builds for now; release builds are always Czech
+// (never the device locale).
+export const DEFAULT_LANGUAGE: Language = __DEV__ ? 'en' : 'cs';
 
 export const LANGUAGES: ReadonlyArray<{ code: Language; label: string; native: string }> = [
   { code: 'cs', label: 'Czech', native: 'Čeština' },

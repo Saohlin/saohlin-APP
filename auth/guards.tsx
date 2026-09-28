@@ -6,7 +6,7 @@ import { useSession } from './SessionProvider';
 import type { AuthStatus } from './types';
 
 /** Where a given status belongs, if it is not where it is. */
-const HOME_FOR: Record<AuthStatus, Href | null> = {
+export const HOME_FOR: Record<AuthStatus, Href | null> = {
   restoring: null,
   guest: '/sign-in',
   needsVerification: '/verify-email',
@@ -42,15 +42,20 @@ export function RequireSessionOnly({ children }: { children: ReactNode }) {
   const { status } = useSession();
   if (status === 'restoring') return <LoadingState />;
   if (status === 'guest') return <Redirect href="/sign-in" />;
+  if (status === 'needsVerification') return <Redirect href="/verify-email" />;
+  if (status === 'needsProfile') return <Redirect href="/profile-setup" />;
   if (status === 'ready') return <Redirect href="/chat" />;
   return <>{children}</>;
 }
 
-/** Sign-in and sign-up: send an already-authenticated user onward. */
+/**
+ * Sign-in and sign-up. Users waiting on email confirmation have no session yet,
+ * so they can still reach these screens (e.g. to sign in once confirmed).
+ */
 export function RequireGuest({ children }: { children: ReactNode }) {
   const { status } = useSession();
   if (status === 'restoring') return <LoadingState />;
-  if (status !== 'guest') {
+  if (status !== 'guest' && status !== 'needsVerification') {
     const home = HOME_FOR[status];
     if (home) return <Redirect href={home} />;
   }
