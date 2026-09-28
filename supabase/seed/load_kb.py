@@ -152,11 +152,12 @@ def build(base):
     ex_vecs = load_npz(os.path.join(corpus, "kb_exemplar_embeddings.npz"))
     exemplars = []
     for bank, jsonl, approved in EXEMPLAR_BANKS:
-        for r in load_jsonl(os.path.join(corpus, jsonl)):
+        for n, r in enumerate(load_jsonl(os.path.join(corpus, jsonl))):
             resp = nfc(r["claudia_response"])
             meta = {k: nfc(v) for k, v in r.items()
                     if k not in {"id", "situation", "claudia_response", "mode", "subtype", "pair_type",
                                  "verbatim", "opens_with_greeting", "word_count"}}
+            meta["order"] = f"{n:05d}"
             exemplars.append({
                 "id": nfc(r["id"]), "bank": bank, "situation": nfc(r["situation"]), "claudia_response": resp,
                 "mode": r.get("mode") or None, "subtype": r.get("subtype") or None,
