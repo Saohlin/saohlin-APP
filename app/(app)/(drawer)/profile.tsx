@@ -26,9 +26,9 @@ export default function ProfileTab() {
         </Text>
       </GlassCard>
 
-      <ListRow icon="edit" title={t('profile.edit')} onPress={() => {}} />
-      {/* Users can review and clear what the AI remembers. */}
-      <ListRow icon="clock" title={t('profile.memoryTitle')} onPress={() => {}} />
+      <ListRow icon="edit" title={t('profile.edit')} onPress={() => router.push('/profile/edit')} />
+      {/* Users can review and correct what the AI remembers. */}
+      <ListRow icon="clock" title={t('profile.memoryTitle')} onPress={() => router.push('/profile/memory')} />
       <ListRow icon="settings" title={t('settings.title')} onPress={() => router.push('/settings')} />
     </Screen>
   );
