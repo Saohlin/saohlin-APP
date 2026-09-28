@@ -35,7 +35,11 @@ In the dashboard, also check:
 supabase test db
 ```
 
-Run before every deploy. The security tests fail if a table is added without RLS,
+Run before every deploy.
+
+Without Docker, `tests/local/run_local_tests.sh` applies the migrations to a plain
+Postgres 16 with pgvector and pgTAP (using a small stand-in for Supabase's `auth`
+and `vault` schemas) and runs the same tests. The security tests fail if a table is added without RLS,
 if a `user_id` column is nullable or doesn't cascade, or if a function becomes
 callable by roles that shouldn't have it.
 

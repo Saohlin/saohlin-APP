@@ -55,8 +55,9 @@ select is(
    where n.nspname = 'public'
      and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
      and has_function_privilege('authenticated', p.oid, 'execute')),
-  array['complete_onboarding', 'delete_my_account', 'f_unaccent', 'get_me', 'grant_consent',
-        'save_context', 'update_profile', 'withdraw_consent'],
+  array['clear_conversation', 'clear_memory', 'complete_onboarding', 'delete_my_account', 'f_unaccent',
+        'forget_note', 'get_conversation', 'get_me', 'get_memory', 'grant_consent', 'list_conversations',
+        'rename_conversation', 'restore_conversation', 'save_context', 'update_profile', 'withdraw_consent'],
   'only allow-listed functions are executable by authenticated'
 );
 
