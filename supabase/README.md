@@ -46,6 +46,29 @@ The parity check runs the 78-case Czech test set through the Python pipeline
 and the database side by side and fails on any difference. The corpus is her
 intellectual property and stays out of this repository.
 
+## Chat function
+
+`functions/chat` runs one turn: gate and save (`start_turn`), crisis screen,
+planner, embedding and retrieval in parallel, the prompt, the reply streamed
+sentence by sentence through her checks, then `finish_turn`. The contract is
+in `functions/_shared/chat/contract.ts`; the pipeline in `_shared/pipeline/`.
+
+```bash
+supabase secrets set OPENAI_API_KEY=sk-...            # dev key, hard monthly cap
+supabase secrets set SAOHLIN_ENV=development          # production refuses to chat while
+                                                      # crisis.resources is empty
+supabase functions deploy chat
+```
+
+Model names, temperatures, prices, limits and her limit messages are rows in
+`app_config`, not code. Tests:
+
+```bash
+deno test -A supabase/functions/_shared/pipeline/                      # unit + parity
+PGHOST=/tmp DATABASE_URL=postgres://postgres@localhost:54322/saohlin_test \
+  deno test -A supabase/functions/_shared/chat/                        # the turn against the real schema
+```
+
 ## Tests
 
 ```bash
