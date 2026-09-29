@@ -6,7 +6,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const ROOT = process.cwd();
-const SKIP = new Set(['node_modules', '.git', '.expo', 'ios', 'android', 'theme', '_to_delete', 'dist']);
+const SKIP = new Set(['node_modules', '.git', '.expo', 'ios', 'android', 'theme', '_to_delete', 'dist', '.venv-seed']);
 const EXT = /\.(ts|tsx)$/;
 
 const RULES = [

@@ -14,6 +14,7 @@
     "@supabase/supabase-js": "^2.117.2",
     "aes-js": "^3.1.2",
     "expo": "~57.0.21",
+    "expo-clipboard": "~57.0.2",
     "expo-constants": "^57.0.17",
     "expo-font": "~57.0.3",
     "expo-haptics": "^57.0.2",
@@ -58,7 +59,8 @@
     "check:classes": "node scripts/check-classes.mjs",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:colors": "node scripts/check-colors.mjs",
-    "check:tokens": "node scripts/check-tokens.mjs"
+    "check:tokens": "node scripts/check-tokens.mjs",
+    "test:chat": "deno test --unstable-sloppy-imports --no-check --config supabase/functions/deno.json lib/chat/"
   },
   "private": true
 }

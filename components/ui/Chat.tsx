@@ -156,8 +156,8 @@ export function ChatBubble({
   );
 }
 
-/** "CLAUDIA AI přemýšlí…" typing indicator. */
-export function TypingIndicator({ className }: { className?: string }) {
+/** "CLAUDIA AI přemýšlí…" typing indicator. `label` replaces the copy (it changes after 4 s). */
+export function TypingIndicator({ label, className }: { label?: string; className?: string }) {
   const t = useT();
   const { shadow } = useTheme();
   const dots = [useRef(new Animated.Value(0.3)).current, useRef(new Animated.Value(0.3)).current, useRef(new Animated.Value(0.3)).current];
@@ -181,7 +181,7 @@ export function TypingIndicator({ className }: { className?: string }) {
   return (
     <View
       accessibilityRole="progressbar"
-      accessibilityLabel={t('chat.thinking')}
+      accessibilityLabel={label ?? t('chat.thinking')}
       style={[shadow.sm, GLASS_EDGE]}
       className={cx('flex-row items-center gap-xs self-start rounded-card bg-bubble-ai px-sm py-xs', className)}>
       <View className="flex-row gap-[3px]">
@@ -190,7 +190,7 @@ export function TypingIndicator({ className }: { className?: string }) {
         ))}
       </View>
       <Text variant="micro" tone="tertiary">
-        {t('chat.thinking')}
+        {label ?? t('chat.thinking')}
       </Text>
     </View>
   );
@@ -210,6 +210,7 @@ export function ChatComposer({
   onMic,
   recording,
   disabled,
+  sendDisabled,
   placeholder,
   className,
 }: {
@@ -219,12 +220,14 @@ export function ChatComposer({
   onMic?: () => void;
   recording?: boolean;
   disabled?: boolean;
+  /** Typing stays possible, sending waits (a reply is in flight). */
+  sendDisabled?: boolean;
   placeholder?: string;
   className?: string;
 }) {
   const { colors, shadow } = useTheme();
   const t = useT();
-  const canSend = value.trim().length > 0 && !disabled;
+  const canSend = value.trim().length > 0 && !disabled && !sendDisabled;
 
   const { height: windowHeight } = useWindowDimensions();
   const keyboard = useKeyboardHeight();

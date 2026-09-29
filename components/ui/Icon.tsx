@@ -37,6 +37,7 @@ import {
   WarningCircle,
   WifiSlash,
   X,
+  Phone,
   type Icon as PhosphorIcon,
 } from 'phosphor-react-native';
 import type { ColorValue } from 'react-native';
@@ -53,7 +54,7 @@ export type IconName =
   | 'calendar' | 'eye' | 'eye-off' | 'gift' | 'heart' | 'shield' | 'back'
   | 'forward' | 'close' | 'check' | 'chevron-down' | 'chevron-right'
   | 'alert' | 'info' | 'refresh' | 'wifi-off' | 'plus' | 'trash' | 'edit'
-  | 'download' | 'star' | 'clock' | 'more' | 'expand' | 'collapse';
+  | 'download' | 'star' | 'clock' | 'more' | 'expand' | 'collapse' | 'phone';
 
 const MAP: Record<IconName, PhosphorIcon> = {
   chat: ChatCircle,
@@ -68,6 +69,7 @@ const MAP: Record<IconName, PhosphorIcon> = {
   send: ArrowRight,
   speaker: SpeakerHigh,
   copy: Copy,
+  phone: Phone,
   lock: LockSimple,
   bookmark: BookmarkSimple,
   search: MagnifyingGlass,
