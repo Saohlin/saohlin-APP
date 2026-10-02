@@ -202,6 +202,9 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
     const params = (cfg["model.params"] ?? {}) as Record<string, Record<string, unknown>>;
     const withTemp = (model: string, t: number | null | undefined) =>
       ({ ...(t === null || t === undefined ? {} : { temperature: t }), ...(params[model] ?? {}) });
+    // A key set to null in chat.temperature means "send no temperature" (models that only
+    // accept their default); a missing key means the Python pipeline's value.
+    const tempOf = (k: string, dflt: number) => (k in temps ? temps[k] : dflt);
     const plannerModel = String(cfg["model.planner"]);
     const replyModel = String(st.degraded ? cfg["model.reply_degraded"] : cfg["model.reply"]);
 
@@ -224,14 +227,14 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
     const planP = planTurn(userMsg, history, async (messages) => {
       const r = await timed("planner", plannerModel, () =>
         withTimeout(to.plannerMs, (signal) =>
-          deps.ai.chat(messages, { model: plannerModel, params: withTemp(plannerModel, temps.planner ?? 0), signal, json: true })));
+          deps.ai.chat(messages, { model: plannerModel, params: withTemp(plannerModel, tempOf("planner", 0)), signal, json: true })));
       return r.text;
     }).then((p) => (mark("planner"), p));
 
     const classP: Promise<CrisisLevel> = timed("crisis", plannerModel, () =>
       withTimeout(to.classifierMs, (signal) =>
         deps.ai.chat(classifierMessages(userMsg, priorUserTurns), {
-          model: plannerModel, params: withTemp(plannerModel, 0), signal, json: true,
+          model: plannerModel, params: withTemp(plannerModel, tempOf("planner", 0)), signal, json: true,
         })))
       .then((r) => parseClassifier(r.text))
       .catch(() => "low" as CrisisLevel)
@@ -280,7 +283,7 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
       let firstToken = false;
       try {
         for await (const chunk of deps.ai.chatStream(msgs, {
-          model: replyModel, params: withTemp(replyModel, temps.reply ?? 0.7), maxTokens, signal: controller.signal,
+          model: replyModel, params: withTemp(replyModel, tempOf("reply", 0.7)), maxTokens, signal: controller.signal,
         })) {
           if (chunk.usage) usage = chunk.usage;
           if (!chunk.delta || stopped) continue;
