@@ -399,6 +399,12 @@ enabled = true
 # user id only from it.
 verify_jwt = true
 
+[functions.jobs]
+enabled = true
+# Not a user endpoint: called by the database every minute with a shared secret
+# (x-jobs-secret), which the function checks itself.
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

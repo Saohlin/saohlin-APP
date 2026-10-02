@@ -253,7 +253,11 @@ export const cs = {
     forgetOne: 'Zapomenout tuhle věc',
     forgetAll: 'Zapomenout všechno',
     forgetAllTitle: 'Zapomenout všechno?',
-    forgetAllMessage: 'CLAUDIA AI zapomene všechno, co o tobě ví. Tohle nejde vzít zpět.',
+    forgetAllMessage:
+      'CLAUDIA AI zapomene, co si z našich rozhovorů zapamatovala, a minulé rozhovory zmizí. Tvůj profil a odpovědi zůstanou. Tohle nejde vzít zpět.',
+    forgetAllKeeps: 'Tvůj profil a odpovědi zůstanou.',
+    memoryNotes: 'Co si pamatuju',
+    memoryLoadFailed: 'Paměť se nepodařilo načíst.',
     vocative: 'Jak tě oslovuju',
     vocativeHint: 'Tvar tvého jména, kterým tě oslovuju, například Terezo.',
     aboutYou: 'O tobě',

@@ -246,7 +246,11 @@ export const en: Dictionary = {
     forgetOne: 'Forget this',
     forgetAll: 'Forget everything',
     forgetAllTitle: 'Forget everything?',
-    forgetAllMessage: 'CLAUDIA AI will forget everything it knows about you. This cannot be undone.',
+    forgetAllMessage:
+      'CLAUDIA AI will forget what it learned from our conversations, and past conversations will disappear. Your profile and answers stay. This cannot be undone.',
+    forgetAllKeeps: 'Your profile and answers stay.',
+    memoryNotes: 'What I remember',
+    memoryLoadFailed: 'Memory could not be loaded.',
     vocative: 'How I greet you',
     vocativeHint: 'The form of your name I use when I speak to you, for example Terezo.',
     aboutYou: 'About you',

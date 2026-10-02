@@ -69,6 +69,36 @@ PGHOST=/tmp DATABASE_URL=postgres://postgres@localhost:54322/saohlin_test \
   deno test -A supabase/functions/_shared/chat/                        # the turn against the real schema
 ```
 
+## Memory jobs
+
+After a reply is stored, the database queues work in `ops.jobs_queue`: a title
+after exchange 2, a summary and notes every `memory.summary_every` exchanges, and
+a final summary, notes and moments once a conversation has been quiet for
+`memory.idle_minutes`. The `jobs` function does the work. It is never in the path
+of a reply.
+
+Every minute `ops.memory_tick()` (pg_cron) queues idle conversations and, if
+anything is ready, calls the function through pg_net. Any number of workers can
+run at once: jobs are leased with `SKIP LOCKED`, retried with backoff, and given
+up on after `memory.job_max_attempts`.
+
+One-time setup per project:
+
+```sh
+# 1. A long random secret, set on the function...
+supabase secrets set JOBS_SECRET="$(openssl rand -hex 32)"
+supabase functions deploy jobs --no-verify-jwt
+```
+
+```sql
+-- 2. ...and the same value, plus the function URL, in Vault (SQL editor).
+select vault.create_secret('https://<project-ref>.supabase.co/functions/v1/jobs', 'jobs_function_url');
+select vault.create_secret('<the JOBS_SECRET value>', 'jobs_secret');
+```
+
+Until both Vault entries exist nothing is called and jobs wait in the queue.
+To look at the queue: `select kind, attempts, last_error, done_at from ops.jobs_queue order by id desc limit 20;`
+
 ## Tests
 
 ```bash
