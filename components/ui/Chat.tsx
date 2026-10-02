@@ -211,6 +211,7 @@ export function ChatComposer({
   recording,
   disabled,
   sendDisabled,
+  maxLength,
   placeholder,
   className,
 }: {
@@ -222,6 +223,8 @@ export function ChatComposer({
   disabled?: boolean;
   /** Typing stays possible, sending waits (a reply is in flight). */
   sendDisabled?: boolean;
+  /** Longest message the server accepts. */
+  maxLength?: number;
   placeholder?: string;
   className?: string;
 }) {
@@ -317,6 +320,7 @@ export function ChatComposer({
           setContent(h);
         }}
         editable={!disabled}
+        maxLength={maxLength}
         placeholder={placeholder ?? t('chat.composerPlaceholder')}
         placeholderTextColor={colors.textDisabled}
         selectionColor={colors.accent}

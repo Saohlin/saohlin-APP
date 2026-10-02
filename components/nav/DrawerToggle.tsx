@@ -6,7 +6,7 @@ import { useT } from '../../i18n';
 import { useTheme } from '../../theme';
 
 // Menu button. Finds the nearest drawer navigator itself, so screens just render <TopBar menu />.
-export function DrawerToggle() {
+export function DrawerToggle({ disabled }: { disabled?: boolean }) {
   const t = useT();
   const { colors } = useTheme();
   const navigation = useNavigation<DrawerNavigationProp<Record<string, undefined>>>();
@@ -19,6 +19,7 @@ export function DrawerToggle() {
       iconColor={colors.textSecondary}
       name="menu"
       label={t('a11y.menu')}
+      disabled={disabled}
       onPress={() => navigation.openDrawer()}
       className="self-start"
     />

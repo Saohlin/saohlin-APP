@@ -1,5 +1,22 @@
 {
   "nodeModulesDir": "none",
-  "compilerOptions": { "strict": true },
-  "lint": { "rules": { "exclude": ["no-explicit-any"] } }
+  "compilerOptions": {
+    "strict": true
+  },
+  "lint": {
+    "exclude": [
+      "**/*_test.ts"
+    ],
+    "rules": {
+      "include": [
+        "no-console"
+      ],
+      "exclude": [
+        "no-explicit-any",
+        "no-import-prefix",
+        "no-unversioned-import",
+        "no-control-regex"
+      ]
+    }
+  }
 }

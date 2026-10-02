@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(43);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000000c1', 'c1@test.local',
@@ -111,6 +111,17 @@ select is(pg_temp.v('r') ->> 'kind', 'turn', 'after purchase the held message is
 select is(pg_temp.v('r') ->> 'userMessageId', pg_temp.v('p') ->> 'userMessageId', 'in place');
 select is((select kind::text from public.usage_ledger where message_id = (pg_temp.v('p') ->> 'userMessageId')::uuid),
   'reply', 'it is counted as a member reply');
+
+-- Past the monthly allowance: still answered, on the cheaper model (G5.4) -----------
+reset role;
+update public.usage_state set month_count = 400 where user_id = '00000000-0000-0000-0000-0000000000c1';
+set local role service_role;
+insert into t values ('g', public.start_turn('00000000-0000-0000-0000-0000000000c1',
+  '30000000-0000-0000-0000-000000000008', 'Zpráva po vyčerpání měsíčního limitu'));
+select is(pg_temp.v('g') ->> 'kind', 'turn', 'past the monthly allowance the member is not cut off');
+select is((pg_temp.v('g') ->> 'degraded')::boolean, true, 'the reply is routed to the cheaper model');
+select is((select kind::text from public.usage_ledger where message_id = (pg_temp.v('g') ->> 'userMessageId')::uuid),
+  'reply_degraded', 'and recorded as such');
 
 -- Daily cap for members: not stored, her message ---------------------------------------
 reset role;

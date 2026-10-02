@@ -368,7 +368,7 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
       p_user: userId, p_user_message_id: userMessageId, p_reply: reply, p_mode: p.mode,
       p_meta: {
         model: replyModel, plannerHow: plannerHowOf(p.how),
-        understanding: { vim: p.vim ?? [], missing: p.chybi_ctyri ?? [], how: p.how, persona: kb.version, crisis: level },
+        understanding: { vim: p.vim ?? [], missing: p.chybi_ctyri ?? [], how: p.how, persona: kb.version },
         tokensIn: sum((u) => u.prompt_tokens ?? 0), tokensCached: sum((u) => u.prompt_tokens_details?.cached_tokens ?? 0),
         tokensOut: sum((u) => u.completion_tokens ?? 0),
         costEur: replyCalls.reduce((a, c) => a + (c.usage ? cost(cfg["model.prices"], c.model, c.usage) : 0), 0),

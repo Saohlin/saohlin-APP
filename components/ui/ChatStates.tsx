@@ -42,7 +42,10 @@ export function CrisisCard({ lines, className }: { lines: CrisisLine[]; classNam
   );
 }
 
-/** Under a user message that did not go through: what happened and a free retry. */
+/**
+ * Under a user message that did not go through: what happened and a free retry.
+ * Deliberately not styled as an error (screen 18: her copy, no red).
+ */
 export function MessageFailed({
   message,
   onRetry,
@@ -55,7 +58,7 @@ export function MessageFailed({
   const t = useT();
   return (
     <View className={cx('items-end gap-xxs', className)}>
-      <InlineMessage tone="error" message={message} />
+      <InlineMessage tone="info" message={message} />
       {onRetry ? <TextButton title={t('chat.retry')} icon="refresh" onPress={onRetry} className="self-end" /> : null}
     </View>
   );

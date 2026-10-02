@@ -14,6 +14,7 @@ import { useT } from '../../i18n';
 export function TopBar({
   title,
   menu,
+  menuDisabled,
   onBack,
   action,
   onActionPress,
@@ -24,6 +25,8 @@ export function TopBar({
   title?: string;
   /** Opens the navigation drawer. Only valid inside the drawer group. */
   menu?: boolean;
+  /** Holds the drawer shut, e.g. while a chat message is in flight. */
+  menuDisabled?: boolean;
   onBack?: () => void;
   action?: IconName;
   onActionPress?: () => void;
@@ -37,7 +40,7 @@ export function TopBar({
     <View className={cx('h-[44px] w-full flex-row items-center justify-between', className)}>
       <View className="w-[40px] justify-center">
         {menu ? (
-          <DrawerToggle />
+          <DrawerToggle disabled={menuDisabled} />
         ) : onBack ? (
           <IconButton name="back" label={t('a11y.back')} onPress={onBack} />
         ) : null}

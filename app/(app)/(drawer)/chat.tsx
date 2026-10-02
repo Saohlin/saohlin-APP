@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { AccessibilityInfo, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { useSession } from '../../../auth';
 import {
@@ -33,6 +33,8 @@ import { useChat } from '../../../lib/chat/useChat';
 const THINKING_LONG_MS = 4000;
 /** Auto-scroll follows the reply only while the user is this close to the bottom. */
 const FOLLOW_SLACK = 80;
+/** The server rejects longer messages (limits.message_max_chars). */
+const MAX_MESSAGE_CHARS = 4000;
 
 /**
  * Chat with CLAUDIA AI (screens 12 to 22). The first reply is often a
@@ -101,6 +103,17 @@ export default function Chat() {
     if (hasCrisisEvent) void crisisResources().then(setStoredCrisis).catch(() => {});
   }, [hasCrisisEvent]);
 
+  // Screen readers hear a reply once, when it is complete, not sentence by sentence.
+  const lastMessage = state.messages[state.messages.length - 1];
+  const completedReply = lastMessage?.role === 'assistant' && lastMessage.status === 'done' && state.phase === 'idle' ? lastMessage : null;
+  const announced = useRef<string | null>(null);
+  useEffect(() => {
+    if (completedReply && state.inFlight === null && announced.current !== completedReply.key && completedReply.key.startsWith('reply:')) {
+      announced.current = completedReply.key;
+      AccessibilityInfo.announceForAccessibility(`${t('brand.ai')}: ${completedReply.text}`);
+    }
+  }, [completedReply, state.inFlight, t]);
+
   // Auto-scroll follows the reply unless the user has scrolled up to read.
   const scroll = useRef<ScrollView>(null);
   const atBottom = useRef(true);
@@ -136,6 +149,7 @@ export default function Chat() {
             onChangeText={setDraft}
             onSend={onSend}
             sendDisabled={chat.busy}
+            maxLength={MAX_MESSAGE_CHARS}
             onMic={() => {}}
           />
         </View>
@@ -143,6 +157,7 @@ export default function Chat() {
       <View className="px-gutter">
         <TopBar
           menu
+          menuDisabled={chat.busy}
           title={t('nav.chat')}
           action="more"
           actionVariant="plain"
@@ -200,7 +215,7 @@ export default function Chat() {
                 ? () => chat.retry(m.key)
                 : undefined
             }
-            failedMessage={t(failureCopy(state.notice))}
+            failedMessage={t(failureCopy(state.notice, !!m.id))}
             heldMessage={t('chat.held')}
             onCopy={onCopy}
           />
@@ -280,7 +295,8 @@ function canRetry(n: Notice | null) {
   return !n || n.kind !== 'error' || n.retryable;
 }
 
-function failureCopy(n: Notice | null) {
+/** `saved`: the server accepted the message before failing, so saying "your message is saved" is true. */
+function failureCopy(n: Notice | null, saved: boolean) {
   if (n?.kind !== 'error') return 'chat.sendFailed' as const;
   switch (n.code) {
     case 'NETWORK':
@@ -292,7 +308,7 @@ function failureCopy(n: Notice | null) {
     case 'UNAUTHENTICATED':
       return 'chat.errorSession' as const;
     case 'AI_UNAVAILABLE':
-      return 'chat.errorAi' as const;
+      return saved ? ('chat.errorAi' as const) : ('chat.sendFailed' as const);
     default:
       return 'chat.sendFailed' as const;
   }
