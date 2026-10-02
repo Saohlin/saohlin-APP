@@ -15,6 +15,11 @@ grant all on t to authenticated, service_role;
 create function pg_temp.v(p_k text) returns jsonb language sql as $$ select v from t where k = p_k $$;
 grant execute on function pg_temp.v(text) to authenticated, service_role;
 
+-- Test-only (rolled back): the assertions below read tables directly while
+-- acting as the service role. The chat function itself never does.
+grant select on all tables in schema public to service_role;
+grant select on all tables in schema ops to service_role;
+
 set local role service_role;
 
 -- Input validation ------------------------------------------------------------------

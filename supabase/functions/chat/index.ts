@@ -67,8 +67,14 @@ Deno.serve(async (req) => {
     return json(400, { code: "INVALID_INPUT" });
   }
 
-  const cfg = await db.config(["app.maintenance"]);
-  if (cfg["app.maintenance"] === true) return json(503, { code: "MAINTENANCE" });
+  try {
+    const cfg = await db.config(["app.maintenance"]);
+    if (cfg["app.maintenance"] === true) return json(503, { code: "MAINTENANCE" });
+  } catch (e) {
+    // Say why in the log (a code, never content) instead of dying with a bare 500.
+    log("chat.config_failed", { db: (e as { code?: string })?.code ?? "unknown" });
+    return json(503, { code: "AI_UNAVAILABLE" });
+  }
 
   const enc = new TextEncoder();
   let controller: ReadableStreamDefaultController<Uint8Array> | null = null;

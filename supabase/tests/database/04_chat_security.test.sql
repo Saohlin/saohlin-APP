@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(25);
 
 -- Two users on near-identical topics (G3.7).
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -29,6 +29,13 @@ select ok(
      and p.proname in ('begin_turn', 'start_turn', 'finish_turn', 'fail_turn', 'log_ai_calls',
                        'memory_search', 'purge_expired')),
   'service-only chat functions are executable by service_role'
+);
+
+-- What the chat function needs, and nothing more, for the service role.
+select ok(
+  has_table_privilege('service_role', 'public.app_config', 'select')
+  and not has_table_privilege('service_role', 'public.messages', 'select'),
+  'the service role reads config directly and everything else through functions'
 );
 
 select ok(

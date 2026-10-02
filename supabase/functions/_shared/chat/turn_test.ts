@@ -19,20 +19,31 @@ const eq = (a: unknown, b: unknown, m?: string) => deepStrictEqual(a, b, m);
 function pgDb(sql: postgres.Sql): Db {
   // postgres.js asks the server for parameter types and serialises objects for jsonb itself.
   const lit = (v: unknown) => (v === undefined ? null : v);
+  // Every call runs as service_role, like the deployed function. Running as a
+  // superuser hid a missing grant on app_config (2 October).
+  const asService = <T>(f: (tx: postgres.TransactionSql) => Promise<T>) =>
+    sql.begin(async (tx) => {
+      await tx`set local role service_role`;
+      return await f(tx);
+    }) as Promise<T>;
   return {
     async rpc<T>(fn: string, args: Record<string, unknown>) {
       const keys = Object.keys(args);
       const call = `select public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}`).join(", ")}) as r`;
       try {
-        const rows = await sql.unsafe(call, keys.map((k) => lit(args[k])) as any[]);
-        return rows[0].r as T;
+        const rows = await asService((tx) => tx.unsafe(call, keys.map((k) => lit(args[k])) as any[]));
+        return (rows as any)[0].r as T;
       } catch (e: any) {
         throw new DbError(e.code ?? "unknown", e.message);
       }
     },
     async config(keys: string[]) {
-      const rows = await sql`select key, value from public.app_config where key = any(${keys})`;
-      return Object.fromEntries(rows.map((r: any) => [r.key, r.value]));
+      try {
+        const rows = await asService((tx) => tx`select key, value from public.app_config where key = any(${keys})`);
+        return Object.fromEntries((rows as any[]).map((r: any) => [r.key, r.value]));
+      } catch (e: any) {
+        throw new DbError(e.code ?? "unknown", e.message);
+      }
     },
   };
 }

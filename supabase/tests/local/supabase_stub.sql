@@ -14,9 +14,9 @@ create extension if not exists pgcrypto with schema extensions;
 create extension if not exists vector with schema extensions;
 
 grant usage on schema public to anon, authenticated, service_role;
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
-alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+-- No default table or function grants for the API roles: this mirrors a project
+-- with auto-expose off, the stricter case. Whatever a role needs must be
+-- granted by a migration, or the tests fail here before they fail in the cloud.
 
 -- auth -----------------------------------------------------------------------
 create schema if not exists auth;
