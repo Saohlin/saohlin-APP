@@ -140,6 +140,7 @@ async function setup() {
   await sql`insert into auth.users (id, email, raw_user_meta_data) values
     (${EVA}, 'eva.mem@test.local', ${sql.json({ profile: { displayName: "Eva", vocative: "Evo", dateOfBirth: "1990-01-01", gender: "female" }, consent: { accepted: true } })}),
     (${PETR}, 'petr.mem@test.local', ${sql.json({ profile: { displayName: "Petr", vocative: "Petře", dateOfBirth: "1985-01-01", gender: "male" }, consent: { accepted: true } })})`;
+  await sql`insert into public.entitlements (user_id, active, plan) values (${EVA}, true, 'founding') on conflict (user_id) do update set active = true`;
   savedConfig = await sql`select key, value from public.app_config where key = any(${SAVED_KEYS})` as any;
   await sql`update public.app_config set value = '2' where key in ('memory.summary_every', 'memory.moments_min_exchanges')`;
   await sql`update public.app_config set value = '100' where key = 'limits.rate_per_minute'`;
@@ -254,6 +255,19 @@ Deno.test({ name: "memory: built after the reply, carried into a new chat, gone 
       eq(r.stopped, "credit_exhausted");
       const [j] = await sql`select done_at, locked_at, run_after > now() as later, last_error from ops.jobs_queue where user_id = ${PETR} and kind = 'summary' order by id desc limit 1`;
       eq([j.done_at, j.locked_at, j.later, j.last_error], [null, null, true, "credit_exhausted:insufficient_quota"]);
+    });
+
+    await t.step("answers older than 90 days are re-checked once, not on every turn", async () => {
+      const STALE = "starší než tři měsíce";
+      await sql`insert into public.user_context (user_id, work_enc) values (${EVA}, private.encrypt(${EVA}, 'Účetnictví'))
+        on conflict (user_id) do update set work_enc = excluded.work_enc, last_confirmed_at = now(), recheck_asked_at = null`;
+      await say(EVA, "Jak se mám rozhodnout?", null, ai);
+      ok(!promptText(ai).includes(STALE), "fresh answers are not questioned");
+      await sql`update public.user_context set last_confirmed_at = now() - interval '91 days' where user_id = ${EVA}`;
+      await say(EVA, "A co dál?", null, ai);
+      ok(promptText(ai).includes(STALE), "stale answers are offered for a gentle re-check");
+      await say(EVA, "Dobře.", null, ai);
+      ok(!promptText(ai).includes(STALE), "and only once");
     });
 
     await t.step("forget everything: the next reply's prompt has none of it (G3.8)", async () => {

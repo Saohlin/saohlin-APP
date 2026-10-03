@@ -261,6 +261,11 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
     const [lo, hi] = budget(p);
     const recent = history.filter((h) => h.role === "assistant").map((h) => openingOf(h.content)).filter(Boolean);
 
+    // Layer 1 re-check: offered once per period, never while someone is in
+    // distress or being given a boundary or a pause.
+    const recheck = ctx.profileStale === true && level === "none" && p.mode !== "HRANICE" && p.mode !== "PAUZA";
+    if (recheck) person.profileStale = true;
+
     const { messages, used } = buildMessages({
       lib: kb.lib, userMsg, person, history, plan: p, pools, recent,
       crisis: { level, resources },
@@ -364,6 +369,8 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
     const replyCalls = calls.filter((c) => c.purpose === "reply" || c.purpose === "retry");
     const sum = (f: (u: Usage) => number) => replyCalls.reduce((a, c) => a + (c.usage ? f(c.usage) : 0), 0);
     const acute = level === "acute" && resources.length > 0;
+    // Everything up to storing the reply; marked here so it is stored with it.
+    mark("done");
     const fin = await deps.db.rpc<any>("finish_turn", {
       p_user: userId, p_user_message_id: userMessageId, p_reply: reply, p_mode: p.mode,
       p_meta: {
@@ -378,9 +385,12 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
       p_retrievals: retrievals,
       p_crisis_card: acute,
     });
-    mark("done");
     if (acute) emit({ event: "crisis", data: { resources } });
     emit({ event: "done", data: { assistantMessageId: fin.assistantMessageId, mode: p.mode } });
+    if (recheck) {
+      // After the reply is out. If this fails the re-check is simply offered again.
+      try { await deps.db.rpc("mark_profile_recheck", { p_user: userId }); } catch { /* next turn */ }
+    }
     await logCalls(deps, userId, userMessageId, calls, cfg);
     log("chat.done", {
       user: userId, message: userMessageId, mode: p.mode, how: plannerHowOf(p.how), retried, crisis: forcesBoundary(level),

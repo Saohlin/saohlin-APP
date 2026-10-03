@@ -1,5 +1,5 @@
 begin;
-select plan(49);
+select plan(55);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000000d1', 'd1@test.local',
@@ -285,6 +285,34 @@ update public.conversations set cleared_at = now() where id = '40000000-0000-000
 set local role service_role;
 select is((select count(*)::int from public.memory_search('00000000-0000-0000-0000-0000000000d2',
             (pg_temp.vec(5))::text::extensions.vector, 3)), 0, 'and not after its conversation is deleted');
+
+-- Stale profile (layer 1) ---------------------------------------------------------------------
+reset role;
+insert into public.user_context (user_id, work_enc)
+values ('00000000-0000-0000-0000-0000000000d1', private.encrypt('00000000-0000-0000-0000-0000000000d1', 'Účetnictví'))
+on conflict (user_id) do update set work_enc = excluded.work_enc, last_confirmed_at = now(), recheck_asked_at = null;
+insert into public.messages (id, conversation_id, user_id, role, status, content_enc, client_msg_id)
+values ('50000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-0000000000d1', 'user', 'pending',
+        private.encrypt('00000000-0000-0000-0000-0000000000d1', 'Ahoj'), gen_random_uuid());
+create function pg_temp.stale() returns boolean language sql as $$
+  select (private.turn_context('00000000-0000-0000-0000-0000000000d1',
+    private.user_dek('00000000-0000-0000-0000-0000000000d1'),
+    '40000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001') ->> 'profileStale')::boolean
+$$;
+select is(pg_temp.stale(), false, 'answers confirmed today are not stale');
+update public.user_context set last_confirmed_at = now() - interval '91 days'
+where user_id = '00000000-0000-0000-0000-0000000000d1';
+select is(pg_temp.stale(), true, 'answers older than 90 days are');
+select public.mark_profile_recheck('00000000-0000-0000-0000-0000000000d1');
+select is(pg_temp.stale(), false, 'once asked about, not again for another period');
+update public.user_context set recheck_asked_at = now() - interval '91 days'
+where user_id = '00000000-0000-0000-0000-0000000000d1';
+select is(pg_temp.stale(), true, 'and again a period later');
+update public.app_config set value = '0' where key = 'memory.profile_stale_days';
+select is(pg_temp.stale(), false, 'the check can be switched off in config');
+select ok(not has_function_privilege('authenticated', 'public.mark_profile_recheck(uuid)', 'execute'),
+  'the app cannot mark the re-check itself');
 
 select * from finish();
 rollback;

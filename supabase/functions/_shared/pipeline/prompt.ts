@@ -70,6 +70,8 @@ export interface Person {
   notes?: { category: string; key: string; content: string }[];
   summary?: string | null;
   recentConversations?: { title: string | null; summary: string | null; lastMessageAt: string }[];
+  /** The onboarding answers are older than the re-check period and may be asked about once. */
+  profileStale?: boolean;
 }
 export interface Message { role: "system" | "user" | "assistant"; content: string }
 export interface Crisis { level: "none" | "low" | "elevated" | "acute"; resources: { name: string; phone: string; hours?: string; audience?: string }[] }
@@ -223,6 +225,13 @@ export function memoryBlock(person: Person, moments: MemoryMoment[] = []): strin
   );
   if (who.length) lines.push(who.join(" "));
   for (const [label, v] of answers) if (v) lines.push(`${label}: ${v}`);
+  if (person.profileStale && answers.some(([, v]) => v)) {
+    // DRAFT wording, for Claudia to approve.
+    lines.push(
+      "(Tyhle odpovědi z úvodu jsou starší než tři měsíce a mohly se změnit. Pokud se to do rozhovoru přirozeně hodí, " +
+        "můžeš se jednou jemně zeptat, jestli to tak pořád je. Nevynucuj to a nevracej se k tomu.)",
+    );
+  }
   if (notes.length) {
     lines.push("", "Co o něm víš:");
     for (const n of notes) lines.push(`- (${CATEGORY_CS[n.category] ?? n.category}) ${n.content}`);

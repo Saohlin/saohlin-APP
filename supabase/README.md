@@ -97,6 +97,18 @@ select vault.create_secret('<the JOBS_SECRET value>', 'jobs_secret');
 ```
 
 Until both Vault entries exist nothing is called and jobs wait in the queue.
+
+Settings (rows in `app_config`, no deploy needed): `memory.summary_every`,
+`memory.idle_minutes`, `memory.notes_max`, `memory.recent_conversations`,
+`memory.job_max_messages`, `memory.job_max_attempts`, `memory.max_workers`,
+`memory.moments_min_exchanges`, `memory.moments_per_conversation`, and
+`memory.profile_stale_days` (the onboarding answers are gently re-checked once
+after this many days; 0 turns it off).
+
+`supabase/functions/_shared/memory/stress_test.ts` runs chatting users, three
+workers, the sweep, and users forgetting, clearing and withdrawing consent all
+at once on real connections. Run it after any change to the queue functions:
+`STRESS_MS=20000 DATABASE_URL=... deno test -A supabase/functions/_shared/memory/stress_test.ts`.
 To look at the queue: `select kind, attempts, last_error, done_at from ops.jobs_queue order by id desc limit 20;`
 
 ## Tests
