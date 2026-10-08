@@ -41,7 +41,8 @@ export default function SignUp() {
       }
     } catch (e) {
       const key = authErrorKey(e);
-      setErrors(key === 'validation.emailInvalid' ? { email: t(key) } : { password: t(key) });
+      const onEmail = key === 'validation.emailInvalid' || key === 'validation.emailTaken';
+      setErrors(onEmail ? { email: t(key) } : { password: t(key) });
     } finally {
       setBusy(false);
     }

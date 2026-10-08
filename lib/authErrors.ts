@@ -26,14 +26,22 @@ export function authErrorKey(error: unknown): Key {
       case 'flow_state_expired':
       case 'flow_state_not_found':
       case 'otp_expired':
+        // Returned for a wrong code as well as an expired one.
+        return 'validation.codeInvalid';
       case 'bad_code_verifier':
         return 'validation.linkExpired';
+      case 'user_already_exists':
+      case 'email_exists':
+        return 'validation.emailTaken';
       case 'same_password':
         return 'validation.passwordSame';
     }
   }
 
   const message = error instanceof Error ? error.message : String(error ?? '');
+  if (message.includes('EMAIL_ALREADY_REGISTERED')) return 'validation.emailTaken';
+  // The server accepted the request but its mail provider refused or failed.
+  if (/sending .*email/i.test(message)) return 'validation.emailSendFailed';
   if (message.includes('AGE_BELOW_MINIMUM')) return 'validation.ageMinimum';
   if (message.includes('INVALID_DATE_OF_BIRTH')) return 'validation.ageMinimum';
   if (message.includes('CONSENT_REQUIRED')) return 'validation.consentRequired';

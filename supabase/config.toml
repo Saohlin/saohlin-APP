@@ -222,8 +222,8 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-# Temporarily off until custom SMTP is set up; turn back on before launch.
-enable_confirmations = false
+# The app confirms with the 6-digit code from the email (verifyOtp).
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -245,9 +245,9 @@ otp_expiry = 3600
 
 # Czech email templates. Supabase only allows custom templates with a custom
 # SMTP provider (or a paid plan), so these stay off until SMTP is configured.
-# [auth.email.template.confirmation]
-# subject = "Potvrď svůj e-mail pro SAOHLIN"
-# content_path = "./supabase/templates/confirmation.html"
+[auth.email.template.confirmation]
+subject = "Tvůj ověřovací kód pro SAOHLIN"
+content_path = "./supabase/templates/confirmation.html"
 
 # [auth.email.template.recovery]
 # subject = "Obnovení hesla do aplikace SAOHLIN"

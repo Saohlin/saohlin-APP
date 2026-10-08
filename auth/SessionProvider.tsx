@@ -54,6 +54,8 @@ type SessionValue = {
     name?: { firstName: string; lastName: string },
   ) => Promise<boolean>;
   signOut: () => Promise<void>;
+  /** Confirms the pending email with the code from the confirmation email and signs in. */
+  verifyEmailCode: (code: string) => Promise<void>;
   resendVerification: () => Promise<void>;
   /** Forget the pending email, e.g. to register with a different one. */
   clearPendingEmail: () => Promise<void>;
@@ -276,6 +278,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         },
       });
       if (error) throw error;
+      // An address that already has a confirmed account comes back as a user
+      // with no identities, and the server sends no email. Without this check
+      // the verify screen would wait for a code that never arrives.
+      if (!data.session && data.user && data.user.identities?.length === 0) {
+        throw new Error('EMAIL_ALREADY_REGISTERED');
+      }
       pending.current = {};
       setStagedProfile(null);
       // With email confirmation switched off the user is signed in straight
@@ -303,6 +311,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
     if (error) throw error;
   }, [pendingEmail]);
+
+  const verifyEmailCode = useCallback(
+    async (code: string) => {
+      const email = pendingEmail ?? authSession?.user.email;
+      if (!email) throw new Error('No email is waiting for confirmation.');
+      const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
+      if (error) throw error;
+      // The new session arrives through onAuthStateChange; the guards route on.
+      await rememberPendingEmail(null);
+    },
+    [pendingEmail, authSession, rememberPendingEmail],
+  );
 
   const clearPendingEmail = useCallback(() => rememberPendingEmail(null), [rememberPendingEmail]);
 
@@ -430,6 +450,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      verifyEmailCode,
       resendVerification,
       clearPendingEmail,
       exchangeCode,
@@ -444,7 +465,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       refresh,
     }),
     [
-      status, session, profile, me, pendingEmail, signIn, signUp, signOut, resendVerification,
+      status, session, profile, me, pendingEmail, signIn, signUp, signOut, verifyEmailCode, resendVerification,
       clearPendingEmail, exchangeCode, requestPasswordReset, updatePassword, grantConsent,
       saveProfile, saveDeeper, completeDeeper, updateSettings, deleteAccount, refresh,
     ],

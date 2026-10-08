@@ -9,7 +9,7 @@ app/
   index.tsx                  splash + entry
   intro.tsx                  welcome video
   profile-setup.tsx          onboarding part 1 (profile + terms)
-  verify-email.tsx           registered, waiting for email confirmation
+  verify-email.tsx           registered, enters the 6-digit code from the email
   auth-callback.tsx          opened from the confirmation email
   reset-password.tsx         opened from the reset email
 
@@ -50,7 +50,8 @@ doesn't navigate by itself; the guards route from the new status.
 - `RequirePaidRoute` decides what to show, never what to allow. Entitlement is
   checked on the server for every message; never use it to guard data or AI calls.
 - `SessionProvider` mirrors server state from Supabase (`get_me`); the backend enforces access.
-- Sign-up requires email confirmation. The profile and consent collected before
+- Sign-up requires email confirmation: the email carries a 6-digit code
+  (`{{ .Token }}`), entered on `verify-email` and checked with `verifyOtp`. The profile and consent collected before
   registration are sent with the sign-up call and stored server-side by a trigger.
 - The session is encrypted with a key kept in the device keychain (`lib/secureStorage.ts`).
 - The splash stays up while the session restores, so there's no flash of sign-in.
