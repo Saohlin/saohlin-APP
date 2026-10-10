@@ -37,6 +37,7 @@ export function WeekStrip({
   onSelect,
   marked = [],
   today = new Date(),
+  lockFuture,
   className,
 }: {
   selected?: Date;
@@ -44,12 +45,15 @@ export function WeekStrip({
   /** Days that already have an entry. */
   marked?: Date[];
   today?: Date;
+  /** Days after `today` cannot be chosen (nothing can be written for a day that has not come). */
+  lockFuture?: boolean;
   className?: string;
 }) {
   const { colors } = useTheme();
   const t = useT();
   const start = mondayOf(today);
   const active = selected ?? today;
+  const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).getTime();
 
   return (
     <View className={cx('w-full flex-row justify-between', className)}>
@@ -58,15 +62,17 @@ export function WeekStrip({
         day.setDate(start.getDate() + i);
         const on = sameDay(day, active);
         const hasEntry = marked.some((m) => sameDay(m, day));
+        const locked = !!lockFuture && day.getTime() > endOfToday;
 
         return (
           <Pressable
             key={key}
             accessibilityRole="button"
-            accessibilityState={{ selected: on }}
+            accessibilityState={{ selected: on, disabled: locked }}
             accessibilityLabel={`${t(key)} ${day.getDate()}`}
+            disabled={locked}
             onPress={() => onSelect?.(day)}
-            className="items-center gap-xxs px-xxs active:opacity-70">
+            className={cx('items-center gap-xxs px-xxs active:opacity-70', locked && 'opacity-45')}>
             <Text variant="label" tone={on ? 'secondary' : 'tertiary'}>
               {t(key)}
             </Text>

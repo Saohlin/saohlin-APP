@@ -108,17 +108,24 @@ export function Dialog({
   confirmLabel,
   onConfirm,
   cancelLabel,
+  onCancel,
   destructive,
+  busy,
   className,
 }: {
   visible: boolean;
+  /** Tapping outside, or the system back button: always the harmless way out. */
   onClose: () => void;
   title: string;
   message?: string;
   confirmLabel: string;
   onConfirm: () => void;
   cancelLabel?: string;
+  /** What the second button does, when it is a choice of its own and not "close". Defaults to `onClose`. */
+  onCancel?: () => void;
   destructive?: boolean;
+  /** The confirmed action is running: both buttons wait. */
+  busy?: boolean;
   className?: string;
 }) {
   const { shadow } = useTheme();
@@ -148,18 +155,24 @@ export function Dialog({
               {destructive ? (
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: !!busy, busy: !!busy }}
+                  disabled={busy}
                   onPress={onConfirm}
-                  className="h-[52px] items-center justify-center rounded-pill bg-error-solid active:opacity-90">
+                  className={cx(
+                    'h-[52px] items-center justify-center rounded-pill bg-error-solid active:opacity-90',
+                    busy && 'opacity-60',
+                  )}>
                   <Text variant="button" className="text-error-on">
                     {confirmLabel}
                   </Text>
                 </Pressable>
               ) : (
-                <LiquidButton title={confirmLabel} onPress={onConfirm} />
+                <LiquidButton title={confirmLabel} onPress={onConfirm} loading={busy} />
               )}
               <SecondaryButton
                 title={cancelLabel ?? t('common.cancel')}
-                onPress={onClose}
+                onPress={onCancel ?? onClose}
+                disabled={busy}
                 haptic={false}
               />
             </View>

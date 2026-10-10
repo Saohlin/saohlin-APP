@@ -205,6 +205,8 @@ export function JournalRow({
   excerpt,
   time,
   locked = true,
+  shared = false,
+  statusLabel,
   onPress,
   className,
 }: {
@@ -212,6 +214,10 @@ export function JournalRow({
   excerpt: string;
   time?: string;
   locked?: boolean;
+  /** Shared with CLAUDIA AI: the chat glyph replaces the lock. */
+  shared?: boolean;
+  /** Spoken after the excerpt, since the glyph alone says nothing to a screen reader. */
+  statusLabel?: string;
   onPress?: () => void;
   className?: string;
 }) {
@@ -219,7 +225,7 @@ export function JournalRow({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${date}. ${excerpt}`}
+      accessibilityLabel={`${date}. ${excerpt}${statusLabel ? `. ${statusLabel}` : ''}`}
       onPress={onPress}
       style={shadow.sm}
       className={cx(SOFT_SURFACE, 'flex-row items-center gap-sm px-sm py-xs active:opacity-85', className)}>
@@ -249,7 +255,11 @@ export function JournalRow({
           {excerpt}
         </Text>
       </View>
-      {locked ? <Icon name="lock" size={15} color={colors.accent} /> : null}
+      {shared ? (
+        <Icon name="chat" size={15} color={colors.accent} />
+      ) : locked ? (
+        <Icon name="lock" size={15} color={colors.accent} />
+      ) : null}
       {time ? (
         <Text variant="micro" tone="tertiary">
           {time}

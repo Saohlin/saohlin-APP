@@ -1,9 +1,10 @@
-import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
   Image,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -12,38 +13,43 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useSession } from '../../../auth';
+import { EntryRow, EntryRowsSkeleton, JournalFault, JournalToast, ROW_GAP, UndoDeleted } from '../../../components/journal';
 import {
-  JournalRow,
+  Banner,
+  EmptyState,
   LiquidButton,
   Screen,
   SectionHeader,
   SoftCard,
   Text,
+  TextButton,
   TopBar,
   WeekStrip,
 } from '../../../components/ui';
 import { useI18n } from '../../../i18n';
+import { JournalError, getHome, type JournalErrorKind } from '../../../lib/api/journal';
+import { dateToDay, dayToDate, displayDay } from '../../../lib/journal/format';
+import { journalStore, useJournalStore } from '../../../lib/journal/store';
 import {
   SCROLL_FADE_HEIGHT,
   motion,
   scrollFade,
   scrollFadeStops,
+  useTheme,
 } from '../../../theme';
 
 /**
- * Journal: header, week strip, today's card with the single "write" entry point,
- * then the archive. The entries below are placeholder data until storage exists.
- * Unshared entries must never reach the AI.
+ * Journal: header, week strip, the card with the single "write" entry point,
+ * then the newest entries. One request (`journal_home`) fills the screen.
+ *
+ * Coming back shows what was loaded last at once and refreshes behind it.
+ * Entries are private; only a shared one ever reaches CLAUDIA AI, and that
+ * is decided on the server, not here.
  */
-const DEMO_ENTRIES = [
-  { id: '1', date: '30. 07. 2026', excerpt: 'Dnes jsem si uvědomila, že klid je můj nový luxus.', time: '22:15' },
-  { id: '2', date: '29. 07. 2026', excerpt: 'Vděčnost za malé okamžiky, které dělají velký rozdíl.', time: '20:40' },
-  { id: '3', date: '28. 07. 2026', excerpt: 'Důvěřuji procesu. Všechno se děje přesně tak, jak má.', time: '19:10' },
-  { id: '4', date: '27. 07. 2026', excerpt: 'Dnes si dovoluji zpomalit a být sama sebou.', time: '18:30' },
-];
 
-/** Gap between archive rows. */
-const ROW_GAP = 20;
+/** How long loaded data is shown without asking the server again. */
+const FRESH_MS = 30_000;
 
 const BOOK = require('../../../assets/brand/journal-book.png');
 /** Illustration width. Controls the text column width next to it. */
@@ -56,9 +62,43 @@ const BOOK_H = Math.round((BOOK_W * 872) / 700);
 const INSET = 'px-[20px]';
 
 export default function Journal() {
-  const { t } = useI18n();
+  const { t, tp } = useI18n();
   const router = useRouter();
-  const [day, setDay] = useState(new Date());
+  const { colors } = useTheme();
+  const { session } = useSession();
+  const { home, deleted, flash } = useJournalStore(session?.userId ?? null);
+
+  const [fault, setFault] = useState<JournalErrorKind | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  /** The day chosen in the strip; null follows the server's "today". */
+  const [picked, setPicked] = useState<string | null>(null);
+  // A slow answer that arrives after a newer one is dropped.
+  const seq = useRef(0);
+
+  const load = useCallback(async () => {
+    const mine = ++seq.current;
+    try {
+      const data = await getHome();
+      if (mine !== seq.current) return;
+      journalStore.setHome(data);
+      setFault(null);
+    } catch (e) {
+      if (mine === seq.current) setFault(e instanceof JournalError ? e.kind : 'unknown');
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const s = journalStore.get();
+      if (!s.home || Date.now() - s.homeAt > FRESH_MS) void load();
+    }, [load]),
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
 
   /** Bottom fade while scrolling; hidden at the end of the list. */
   const fade = useRef(new Animated.Value(1)).current;
@@ -76,75 +116,125 @@ export default function Journal() {
     }).start();
   };
 
+  // The server's day (Prague), so the strip is right on a phone set to another zone.
+  const today = home?.today ?? dateToDay(new Date());
+  // A day picked last week is not in this week's strip any more.
+  const inWeek = !!picked && (!home || home.week.some((d) => d.date === picked));
+  const day = inWeek && picked ? picked : today;
+  const isToday = day === today;
+  const dayCount = home ? (isToday ? home.todayCount : home.week.find((d) => d.date === day)?.count ?? 0) : 0;
+
+  const openEntry = (id: string) => router.push({ pathname: '/journal/[id]', params: { id } });
+
   // No bottom edge: the scroller runs to the screen edge; list padding clears the home indicator.
   return (
     <Screen padded={false} edges={['top']}>
-      <ScrollView onScroll={onScroll} scrollEventThrottle={32} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={32}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.accent} />
+        }>
         <View className={`${INSET} pb-xxl`}>
-        <TopBar
-          onBack={() => (router.canGoBack() ? router.back() : router.replace('/chat'))}
-          action="search"
-          actionLabel={t('common.search')}
-        />
+          <TopBar
+            onBack={() => (router.canGoBack() ? router.back() : router.replace('/chat'))}
+            action="search"
+            actionLabel={t('a11y.search')}
+            onActionPress={() => router.push({ pathname: '/journal/archive', params: { search: '1' } })}
+          />
 
-        <Text variant="title" center className="pt-xs">
-          {t('journal.title')}
-        </Text>
-        {/* Subtitle column is narrower than the full width, for the intended line break. */}
-        <Text variant="caption" center className="w-[72%] self-center pt-xs">
-          {t('journal.subtitle')}
-        </Text>
+          <Text variant="title" center className="pt-xs">
+            {t('journal.title')}
+          </Text>
+          {/* Subtitle column is narrower than the full width, for the intended line break. */}
+          <Text variant="caption" center className="w-[72%] self-center pt-xs">
+            {t('journal.subtitle')}
+          </Text>
 
-        {/* Week strip is inset less than the default card padding. */}
-        <SoftCard padding="px-xs py-sm" className="mt-md">
-          <WeekStrip selected={day} onSelect={setDay} marked={[new Date()]} />
-        </SoftCard>
+          {/* Week strip is inset less than the default card padding. */}
+          <SoftCard padding="px-xs py-sm" className="mt-md">
+            <WeekStrip
+              today={dayToDate(today)}
+              selected={dayToDate(day)}
+              onSelect={(d) => setPicked(dateToDay(d))}
+              marked={(home?.week ?? []).filter((d) => d.count > 0).map((d) => dayToDate(d.date))}
+              lockFuture
+            />
+          </SoftCard>
 
-        <SoftCard className="mt-sm">
-          <View className="flex-row items-start">
-            <View className="flex-1 pr-sm">
-              <Text variant="label" tone="tertiary">
-                {t('journal.today')}
-              </Text>
-              {/* `greeting` keeps sentence case (`title` would uppercase it). */}
-              <Text variant="greeting" className="pt-xxs">
-                {t('journal.todayPrompt')}
-              </Text>
-              {/* The single entry point into writing. No accessory arrow, so the label keeps full size. */}
-              <LiquidButton
-                height={WRITE_H}
-                title={t('journal.write')}
-                onPress={() => router.push('/journal/new')}
-                style={{ marginTop: 24 }}
+          <SoftCard className="mt-sm">
+            <View className="flex-row items-start">
+              <View className="flex-1 pr-sm">
+                <Text variant="label" tone="tertiary">
+                  {isToday ? t('journal.today') : displayDay(day)}
+                </Text>
+                {/* `greeting` keeps sentence case (`title` would uppercase it). */}
+                <Text variant="greeting" className="pt-xxs">
+                  {isToday ? t('journal.todayPrompt') : t('journal.dayPrompt')}
+                </Text>
+                {dayCount > 0 ? (
+                  <TextButton
+                    title={tp(isToday ? 'journal.todayEntries' : 'journal.dayEntries', dayCount)}
+                    onPress={() => router.push({ pathname: '/journal/archive', params: { day } })}
+                    className="pt-xs"
+                  />
+                ) : null}
+                {/* The single entry point into writing. No accessory arrow, so the label keeps full size. */}
+                <LiquidButton
+                  height={WRITE_H}
+                  title={t('journal.write')}
+                  onPress={() =>
+                    isToday ? router.push('/journal/new') : router.push({ pathname: '/journal/new', params: { day } })
+                  }
+                  style={{ marginTop: dayCount > 0 ? 12 : 24 }}
+                />
+              </View>
+              <Image
+                source={BOOK}
+                style={{ width: BOOK_W, height: BOOK_H }}
+                resizeMode="contain"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
               />
             </View>
-            <Image
-              source={BOOK}
-              style={{ width: BOOK_W, height: BOOK_H }}
-              resizeMode="contain"
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            />
-          </View>
-        </SoftCard>
+          </SoftCard>
 
-        <SectionHeader
-          title={t('journal.archive')}
-          action={t('common.showAll')}
-          onActionPress={() => {}}
-          className="pt-lg"
-        />
-        <View style={{ gap: ROW_GAP }}>
-          {DEMO_ENTRIES.map((e) => (
-            <JournalRow
-              key={e.id}
-              date={e.date}
-              excerpt={e.excerpt}
-              time={e.time}
-              onPress={() => {}}
+          <UndoDeleted deleted={deleted} className="mt-sm" />
+
+          {/* A refresh that failed leaves what was loaded on screen, and says so. */}
+          {home && fault ? (
+            <Banner
+              tone="warning"
+              message={t('journal.refreshFailed')}
+              actionLabel={t('common.tryAgain')}
+              onAction={() => void load()}
+              className="mt-sm"
             />
-          ))}
-          </View>
+          ) : null}
+
+          <SectionHeader
+            title={t('journal.archive')}
+            action={home && home.total > 0 ? t('common.showAll') : undefined}
+            onActionPress={() => router.push('/journal/archive')}
+            className="pt-lg"
+          />
+
+          {!home ? (
+            fault ? (
+              <JournalFault kind={fault} onRetry={() => void load()} compact />
+            ) : (
+              <EntryRowsSkeleton rows={4} />
+            )
+          ) : home.total === 0 ? (
+            <EmptyState compact title={t('states.emptyJournalTitle')} message={t('states.emptyJournalMessage')} />
+          ) : (
+            <View style={{ gap: ROW_GAP }}>
+              {home.recent.map((e) => (
+                <EntryRow key={e.id} entry={e} onPress={() => openEntry(e.id)} />
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -160,6 +250,8 @@ export default function Journal() {
           style={StyleSheet.absoluteFill}
         />
       </Animated.View>
+
+      <JournalToast flash={flash} />
     </Screen>
   );
 }
