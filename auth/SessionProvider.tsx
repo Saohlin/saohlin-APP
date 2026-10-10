@@ -19,6 +19,8 @@ import {
   PLATFORM,
   RESET_PASSWORD_URL,
 } from '../lib/config';
+import { clearAllDrafts } from '../lib/journal/drafts';
+import { journalStore } from '../lib/journal/store';
 import { supabase } from '../lib/supabase';
 import type {
   AuthStatus,
@@ -299,6 +301,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     pending.current = {};
     setStagedProfile(null);
     await rememberPendingEmail(null);
+    // Journal rows held in memory for the Deník screen go with the session.
+    journalStore.own(null);
     await supabase.auth.signOut({ scope: 'local' });
   }, [rememberPendingEmail]);
 
@@ -424,14 +428,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [authSession]);
 
   const deleteAccount = useCallback(async () => {
+    const userId = authSession?.user.id;
     const { error } = await supabase.rpc('delete_my_account');
     if (error) throw error;
+    // Unsaved journal text kept on this phone goes with the account.
+    if (userId) await clearAllDrafts(userId);
+    journalStore.own(null);
     pending.current = {};
     setStagedProfile(null);
     await rememberPendingEmail(null);
     // The user no longer exists, so only the local session needs clearing.
     await supabase.auth.signOut({ scope: 'local' });
-  }, [rememberPendingEmail]);
+  }, [authSession, rememberPendingEmail]);
 
   const refresh = useCallback(async () => {
     if (authSession) await loadMe();
