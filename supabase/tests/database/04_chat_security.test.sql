@@ -140,7 +140,7 @@ select throws_ok(
   '42501', null, 'B cannot write a mark in A''s name');
 select is(
   public.get_memory(),
-  '{"notes": [], "conversations": [], "momentsCount": 1}'::jsonb,
+  '{"notes": [], "conversations": [], "momentsCount": 1, "sharedEntriesCount": 0}'::jsonb,
   'B''s memory screen shows none of A''s notes or summaries, and only B''s own moment');
 select throws_ok(
   format('select public.forget_note(%L)', (select v ->> 'id' from t where k = 'a_note')),

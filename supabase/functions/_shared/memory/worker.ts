@@ -1,18 +1,19 @@
 // The memory worker: turns queued ids into a title, a summary, notes and
-// moments. Runs after the reply, never in its path.
+// moments, and a shared journal entry into its reflections. Runs after the
+// reply, never in its path.
 //
 // Safe to run in parallel with itself: jobs are leased in the database
 // (claim_jobs), and every write re-checks inside one transaction that the job
-// is still wanted (save_job_result), so "forget" always wins over a job that
-// was already running.
+// is still wanted (save_job_result, journal_job_save), so "forget", "un-share"
+// and an edit always win over a job that was already running.
 //
 // Logs carry ids, kinds, counts and codes. Never text.
 import { type AI, type ChatMessage, ProviderError, type Usage } from "../chat/openai.ts";
 import { type Db, DbError } from "../chat/turn.ts";
 import { log } from "../chat/log.ts";
 import {
-  type JobMessage, momentsPrompt, type Note, notesPrompt, parseMoments, parseNotes, parseSummary, parseTitle,
-  summaryPrompt, titlePrompt,
+  type JobMessage, journalMomentsPrompt, momentsPrompt, type Note, notesPrompt, parseMoments, parseNotes, parseSummary,
+  parseTitle, summaryPrompt, titlePrompt,
 } from "./prompts.ts";
 
 export interface WorkerDeps { db: Db; ai: AI; now?: () => number }
@@ -32,10 +33,14 @@ interface Ctx {
   skip?: string; kind?: string; userId?: string; conversationId?: string; gender?: string | null;
   messages?: JobMessage[]; notes?: Note[]; throughAt?: string; throughMessageId?: string; messageCount?: number; occurredAt?: string;
 }
+/** What journal_job_context returns for a shared entry. */
+interface JournalCtx { skip?: string; entryId?: string; version?: number; date?: string; title?: string | null; text?: string; gender?: string | null }
 
-const CONFIG_KEYS = ["model.jobs", "model.embedding", "model.params", "model.prices", "memory.moments_per_conversation"];
-const MAX_TOKENS: Record<string, number> = { title: 300, summary: 1800, notes: 2400, moments: 1000 };
-const PURPOSE: Record<string, string> = { title: "title", summary: "summary", notes: "memory", moments: "memory" };
+const CONFIG_KEYS = [
+  "model.jobs", "model.embedding", "model.params", "model.prices", "memory.moments_per_conversation", "journal.moments_per_entry",
+];
+const MAX_TOKENS: Record<string, number> = { title: 300, summary: 1800, notes: 2400, moments: 1000, journal: 1000 };
+const PURPOSE: Record<string, string> = { title: "title", summary: "summary", notes: "memory", moments: "memory", journal: "memory" };
 
 // deno-lint-ignore no-explicit-any
 function cost(prices: any, model: string, u: Usage): number {
@@ -66,6 +71,7 @@ export async function runJobs(deps: WorkerDeps, opts: WorkerOpts = {}): Promise<
   const params = ((cfg["model.params"] ?? {}) as Record<string, Record<string, unknown>>)[model] ?? {};
   const prices = cfg["model.prices"];
   const maxMoments = Number(cfg["memory.moments_per_conversation"] ?? 3);
+  const maxJournalMoments = Number(cfg["journal.moments_per_entry"] ?? 2);
 
   const timed = async <T extends { usage: Usage }>(calls: Call[], purpose: string, m: string, f: (signal: AbortSignal) => Promise<T>): Promise<T> => {
     const t0 = now();
@@ -93,9 +99,50 @@ export async function runJobs(deps: WorkerDeps, opts: WorkerOpts = {}): Promise<
   const ask = (calls: Call[], kind: string, messages: ChatMessage[], json: boolean) =>
     timed(calls, PURPOSE[kind], model, (signal) => deps.ai.chat(messages, { model, params, maxTokens: MAX_TOKENS[kind], signal, json }));
 
+  const embedAll = async (calls: Call[], texts: string[]) => {
+    const moments: { content: string; embedding: string }[] = [];
+    for (const content of texts) {
+      const e = await timed(calls, "embedding", embModel, (signal) => deps.ai.embed(content, { model: embModel, dims: 1024, signal }));
+      moments.push({ content, embedding: JSON.stringify(e.vector) });
+    }
+    return moments;
+  };
+
+  /**
+   * A shared journal entry. Its own two database functions: job_context and
+   * save_job_result look up a conversation and would close this job as "gone".
+   * Returns false for output that could not be parsed.
+   */
+  async function journal(job: Job, calls: Call[]): Promise<boolean> {
+    const ctx = await deps.db.rpc<JournalCtx>("journal_job_context", { p_job: job.id, p_lease: job.lease });
+    if (ctx.skip) {
+      res.skipped++;
+      return true;
+    }
+    const prompt = journalMomentsPrompt({ date: ctx.date ?? "", title: ctx.title, text: ctx.text ?? "" }, maxJournalMoments);
+    const texts = parseMoments((await ask(calls, "journal", prompt, true)).text, maxJournalMoments);
+    if (!texts) return false;
+    // No insight in the entry is a finished job with nothing to remember.
+    const moments = await embedAll(calls, texts);
+    const outcome = await deps.db.rpc<string>("journal_job_save", {
+      p_job: job.id, p_lease: job.lease, p_result: { version: ctx.version, moments }, p_calls: calls,
+    });
+    if (outcome === "saved") res.saved++;
+    else res.stale++;
+    return true;
+  }
+
   async function one(job: Job): Promise<void> {
     const calls: Call[] = [];
     try {
+      if (job.kind === "journal") {
+        if (!(await journal(job, calls))) {
+          await deps.db.rpc("fail_job", { p_job: job.id, p_lease: job.lease, p_error: "bad_output", p_retry: true, p_count: true, p_calls: calls });
+          res.failed++;
+          log("jobs.bad_output", { job: job.id, kind: job.kind });
+        }
+        return;
+      }
       const ctx = await deps.db.rpc<Ctx>("job_context", { p_job: job.id, p_lease: job.lease });
       if (ctx.skip) {
         res.skipped++;
@@ -116,14 +163,7 @@ export async function runJobs(deps: WorkerDeps, opts: WorkerOpts = {}): Promise<
         if (parsed) result = { ...parsed, throughAt: ctx.throughAt };
       } else if (job.kind === "moments") {
         const texts = parseMoments((await ask(calls, "moments", momentsPrompt(msgs, ctx.gender), true)).text, maxMoments);
-        if (texts) {
-          const moments: { content: string; embedding: string }[] = [];
-          for (const content of texts) {
-            const e = await timed(calls, "embedding", embModel, (signal) => deps.ai.embed(content, { model: embModel, dims: 1024, signal }));
-            moments.push({ content, embedding: JSON.stringify(e.vector) });
-          }
-          result = { moments, occurredAt: ctx.occurredAt };
-        }
+        if (texts) result = { moments: await embedAll(calls, texts), occurredAt: ctx.occurredAt };
       }
 
       if (!result) {

@@ -111,6 +111,53 @@ at once on real connections. Run it after any change to the queue functions:
 `STRESS_MS=20000 DATABASE_URL=... deno test -A supabase/functions/_shared/memory/stress_test.ts`.
 To look at the queue: `select kind, attempts, last_error, done_at from ops.jobs_queue order by id desc limit 20;`
 
+## Journal
+
+The journal (Deník) is one table, `public.journal_entries`, and no Edge Function of its
+own. Text is stored only as ciphertext under the user's data key, and no role has a
+grant on the table, the service role included: the app uses the `journal_*` functions.
+
+- **Private by default.** `journal_home`, `journal_list`, `journal_days`, `journal_get`,
+  `journal_save`, `journal_save_message`, `journal_delete`, `journal_restore` and
+  `journal_search` never involve the AI. Call them with POST (the `supabase.rpc`
+  default); with `{ get: true }` the arguments would travel in the URL.
+- **Sharing is explicit.** `journal_share` flips the flag and opens a conversation with
+  `origin = 'journal_share'`. The reflection is an ordinary chat turn: the chat function
+  gets the entry from `turn_context`, never from the app. `journal_unshare` takes it back.
+- **Memory.** No user action queues a job. Every minute `ops.memory_tick()` also queues a
+  `journal` job for each shared entry that is not indexed at its current version; the
+  `jobs` worker turns it into at most `journal.moments_per_entry` short reflections.
+- **Limits and conflicts are return values** (`{ "kind": "limit" | "conflict" }`), not errors.
+
+A private entry cannot reach the model: only `turn_context` and `journal_job_context`
+decrypt an entry for it, and both require `shared_with_ai`; a trigger removes an entry's
+memory rows in the transaction that un-shares, edits or deletes it; `journal_job_save`
+re-checks the flag and the version under the row lock; and `memory_search` ignores a
+journal row whose entry is not shared right now.
+
+Settings (rows in `app_config`): `journal.body_max_chars`, `journal.title_max_chars`,
+`journal.writes_per_minute`, `journal.searches_per_minute`, `journal.entries_per_day`,
+`journal.entries_max`, `journal.search_scan_max`, `journal.shares_per_day`,
+`journal.share_max_chars`, `journal.share_inject_exchanges`, `journal.moments_per_entry`,
+`journal.reindex_delay_seconds`.
+
+After deploying the journal migrations, redeploy both functions (`chat` reads the shared
+entry, `jobs` knows the new job kind) and check once per project:
+
+```sql
+-- must be false: nothing but the functions reads the table
+select has_table_privilege('service_role', 'public.journal_entries', 'select');
+-- statement logging must not capture function arguments (entry text is one of them)
+show log_statement; show log_min_duration_statement; show log_parameter_max_length_on_error;
+-- after sharing an entry and waiting a minute: done_at set, last_error null
+select kind, attempts, last_error, done_at from ops.jobs_queue where kind = 'journal' order by id desc limit 5;
+```
+
+`supabase/functions/_shared/memory/journal_test.ts` is the G4.3 proof (share five entries,
+keep five private, inspect every model call and the index) and a contention run of share,
+edit, un-share, delete, forget and three workers. Run it after any change to the journal
+or the queue: `STRESS_MS=20000 DATABASE_URL=... deno test -A supabase/functions/_shared/memory/journal_test.ts`.
+
 ## Tests
 
 ```bash
