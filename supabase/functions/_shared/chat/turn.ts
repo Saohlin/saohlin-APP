@@ -2,6 +2,7 @@
 //
 //   start_turn (gate + save + context, one DB call)  -> accepted
 //   in parallel: keyword screen, planner, crisis classifier, embedding -> retrieve_all
+//     (the first turn on a shared journal entry reads the entry as well as the line)
 //   build the prompt, stream the reply through the sentence gate  -> delta ...
 //   one corrective continuation if a sentence fails
 //   finish_turn (reply, meta, retrievals, jobs)  -> done
@@ -12,7 +13,7 @@ import type { ChatEvent, ChatRequest, CrisisResource, ErrorCode } from "./contra
 import { type AI, type ChatMessage, ProviderError, type Usage } from "./openai.ts";
 import { log } from "./log.ts";
 import { budget, enforceUnderstanding, plan as planTurn, type Plan, type Turn } from "../pipeline/modes.ts";
-import { buildMessages, type KbItem, Library, type Person, type Pools, type StaticKb } from "../pipeline/prompt.ts";
+import { buildMessages, type JournalEntry, type KbItem, Library, type Person, type Pools, type StaticKb } from "../pipeline/prompt.ts";
 import { continuationMessages, finalChecks, LeakIndex, SentenceGate, splitSentences } from "../pipeline/gate.ts";
 import { classifierMessages, type CrisisLevel, forcesBoundary, keywordScreen, maxLevel, parseClassifier } from "../pipeline/crisis.ts";
 import { maxLimits, retrievalQuery } from "../pipeline/query.ts";
@@ -198,6 +199,18 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
     };
     const kb = await loadKb(deps.db, t0);
 
+    // A journal entry shared into this conversation (journal_share). The
+    // database returns it only while it is still shared; the app cannot send
+    // one. On the first exchange the user's own line is one generic sentence,
+    // so the entry is what the crisis screen, the classifier, the planner and
+    // the retrieval query have to read. Later exchanges are about the user's
+    // messages again; the entry stays in the prompt as context. Screening it
+    // once is deliberate: on every turn, one phrase in the entry would force
+    // HRANICE for the whole conversation.
+    const entry: JournalEntry | null = ctx.journalEntry?.text ? (ctx.journalEntry as JournalEntry) : null;
+    const opensOnEntry = entry !== null && (ctx.conversation?.exchangeCount ?? 0) === 0;
+    const said = opensOnEntry ? `${entry!.text}\n\n${userMsg}` : userMsg;
+
     const temps = (cfg["chat.temperature"] ?? {}) as Record<string, number | null>;
     const params = (cfg["model.params"] ?? {}) as Record<string, Record<string, unknown>>;
     const withTemp = (model: string, t: number | null | undefined) =>
@@ -221,10 +234,10 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
     };
 
     // 3. In parallel: crisis, plan, retrieval -----------------------------------------
-    const keyword = keywordScreen(userMsg, (cfg["crisis.patterns"] ?? []) as string[]);
+    const keyword = keywordScreen(said, (cfg["crisis.patterns"] ?? []) as string[]);
     const priorUserTurns = history.filter((h) => h.role === "user").map((h) => h.content);
 
-    const planP = planTurn(userMsg, history, async (messages) => {
+    const planP = planTurn(said, history, async (messages) => {
       const r = await timed("planner", plannerModel, () =>
         withTimeout(to.plannerMs, (signal) =>
           deps.ai.chat(messages, { model: plannerModel, params: withTemp(plannerModel, tempOf("planner", 0)), signal, json: true })));
@@ -233,7 +246,7 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
 
     const classP: Promise<CrisisLevel> = timed("crisis", plannerModel, () =>
       withTimeout(to.classifierMs, (signal) =>
-        deps.ai.chat(classifierMessages(userMsg, priorUserTurns), {
+        deps.ai.chat(classifierMessages(said, priorUserTurns), {
           model: plannerModel, params: withTemp(plannerModel, tempOf("planner", 0)), signal, json: true,
         })))
       .then((r) => parseClassifier(r.text))
@@ -241,7 +254,7 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
       .then((l) => (mark("classifier"), l));
 
     const embModel = String(cfg["model.embedding"] ?? "text-embedding-3-large");
-    const query = retrievalQuery(userMsg, ctx.previousUserText);
+    const query = retrievalQuery(opensOnEntry ? entry!.text : userMsg, ctx.previousUserText);
     const pastRef = search(PAST_REFERENCE, unaccent(userMsg.toLowerCase())) !== null;
     const poolsP: Promise<Pools> = timed("embedding", embModel, () =>
       withTimeout(to.embedMs, (signal) => deps.ai.embed(query, { model: embModel, dims: 1024, signal })))
@@ -255,7 +268,7 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
     const [planned, classLevel, pools] = await Promise.all([planP, classP, poolsP]);
 
     // 4. Decide the shape ------------------------------------------------------------------
-    let p: Plan = enforceUnderstanding(planned, history, userMsg);
+    let p: Plan = enforceUnderstanding(planned, history, said);
     const level = maxLevel(keyword, classLevel);
     if (forcesBoundary(level)) p = { ...p, mode: "HRANICE", how: `${p.how}+crisis` };
     const [lo, hi] = budget(p);
@@ -268,7 +281,7 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
 
     const { messages, used } = buildMessages({
       lib: kb.lib, userMsg, person, history, plan: p, pools, recent,
-      crisis: { level, resources },
+      crisis: { level, resources }, journalEntry: entry, searchText: opensOnEntry ? said : null,
     });
 
     // 5. Generate through the sentence gate --------------------------------------------
