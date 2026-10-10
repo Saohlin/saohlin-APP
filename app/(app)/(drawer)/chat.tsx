@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { useSession } from '../../../auth';
+import { SharedEntryCard } from '../../../components/journal';
 import {
   Banner,
   ChatBubble,
@@ -22,12 +23,17 @@ import {
   TrialCounter,
   TypingIndicator,
   type CrisisLine,
+  type Tone,
 } from '../../../components/ui';
 import { useI18n } from '../../../i18n';
 import { crisisResources } from '../../../lib/api/chat';
+import { JournalError, saveMessage } from '../../../lib/api/journal';
 import { copyText } from '../../../lib/clipboard';
 import type { Notice, UiMessage } from '../../../lib/chat/reducer';
 import { useChat } from '../../../lib/chat/useChat';
+import { uuidv4 } from '../../../lib/chat/uuid';
+import { limitCopy } from '../../../lib/journal/copy';
+import { journalStore } from '../../../lib/journal/store';
 
 /** The thinking copy changes after this long without a first sentence. */
 const THINKING_LONG_MS = 4000;
@@ -41,18 +47,29 @@ const MAX_MESSAGE_CHARS = 4000;
  * question, and reply length varies a lot by mode, so the layout must not
  * assume long answers. Opened with `?c=<conversationId>` it reads and
  * continues a past conversation.
+ *
+ * `?opener=journal` arrives with a conversation that was just opened on a
+ * shared journal entry: the first line is sent for the user, so CLAUDIA AI
+ * answers the entry without them having to type. The entry itself is never
+ * sent from here; the server reads it.
+ *
+ * A long press on a message offers "save to journal": the server copies the
+ * stored message, so no text travels back from the phone.
  */
 export default function Chat() {
   const { t } = useI18n();
   const router = useRouter();
   const navigation = useNavigation();
-  const { c } = useLocalSearchParams<{ c?: string }>();
+  const { c, opener } = useLocalSearchParams<{ c?: string; opener?: string }>();
   const { profile, entitlement, refresh } = useSession();
 
   const [draft, setDraft] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [toast, setToast] = useState<{ tone: Tone; message: string } | null>(null);
+  const hideToast = useCallback(() => setToast(null), []);
+  /** The message whose menu is open. */
+  const [picked, setPicked] = useState<UiMessage | null>(null);
   const [thinkingLong, setThinkingLong] = useState(false);
   const [storedCrisis, setStoredCrisis] = useState<CrisisLine[]>([]);
 
@@ -131,7 +148,50 @@ export default function Chat() {
   };
 
   const onCopy = async (text: string) => {
-    if (await copyText(text)) setCopied(true);
+    if (await copyText(text)) setToast({ tone: 'success', message: t('chat.copied') });
+  };
+
+  // A conversation just opened on a shared entry: say the first line once.
+  const openerSent = useRef<string | null>(null);
+  useEffect(() => {
+    if (opener !== 'journal' || !c || openerSent.current === c) return;
+    if (state.conversationId !== c || state.loading || chat.busy) return;
+    openerSent.current = c;
+    router.setParams({ opener: undefined });
+    const onEntry = state.messages.some((m) => m.eventKind === 'journal_shared');
+    const spoken = state.messages.some((m) => m.role === 'user');
+    if (onEntry && !spoken && chat.send(t('journal.shareOpener'))) atBottom.current = true;
+  }, [opener, c, state.conversationId, state.loading, state.messages, chat, router, t]);
+
+  // One id per message, kept across retries: saving the same message twice is one entry.
+  const saveIds = useRef(new Map<string, string>());
+  const saving = useRef(false);
+  const onSaveToJournal = async (m: UiMessage) => {
+    if (!m.id || saving.current) return;
+    saving.current = true;
+    const messageId = m.id;
+    if (!saveIds.current.has(messageId)) saveIds.current.set(messageId, uuidv4());
+    try {
+      const res = await saveMessage(messageId, saveIds.current.get(messageId)!);
+      if (res.kind === 'ok') {
+        // The Deník screen re-reads on its next visit.
+        journalStore.changed();
+        setToast({ tone: 'success', message: t('journal.savedFromChat') });
+      } else {
+        setToast({ tone: 'warning', message: t(limitCopy(res)) });
+      }
+    } catch (e) {
+      const kind = e instanceof JournalError ? e.kind : 'unknown';
+      setToast(
+        kind === 'consent'
+          ? { tone: 'warning', message: t('journal.consentRequired') }
+          : kind === 'offline'
+            ? { tone: 'warning', message: t('journal.actionOffline') }
+            : { tone: 'error', message: t('journal.saveMessageFailed') },
+      );
+    } finally {
+      saving.current = false;
+    }
   };
 
   const trialRemaining = state.trialRemaining ?? entitlement.trialRemaining;
@@ -218,6 +278,8 @@ export default function Chat() {
             failedMessage={t(failureCopy(state.notice, !!m.id))}
             heldMessage={t('chat.held')}
             onCopy={onCopy}
+            onMenu={setPicked}
+            onOpenEntry={(id) => router.push({ pathname: '/journal/[id]', params: { id } })}
           />
         ))}
 
@@ -236,7 +298,32 @@ export default function Chat() {
         />
       </ScrollView>
 
-      <Toast visible={copied} message={t('chat.copied')} onHide={() => setCopied(false)} />
+      <View className="px-gutter">
+        <Toast visible={!!toast} tone={toast?.tone} message={toast?.message ?? ''} onHide={hideToast} />
+      </View>
+
+      <Sheet visible={!!picked} onClose={() => setPicked(null)} title={t('journal.messageActions')}>
+        <ListRow
+          icon="copy"
+          title={t('chat.copy')}
+          showChevron={false}
+          onPress={() => {
+            const m = picked;
+            setPicked(null);
+            if (m) void onCopy(m.text);
+          }}
+        />
+        <ListRow
+          icon="bookmark"
+          title={t('journal.saveToJournal')}
+          showChevron={false}
+          onPress={() => {
+            const m = picked;
+            setPicked(null);
+            if (m) void onSaveToJournal(m);
+          }}
+        />
+      </Sheet>
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('nav.chat')}>
         <ListRow
@@ -322,6 +409,8 @@ function MessageView({
   failedMessage,
   heldMessage,
   onCopy,
+  onMenu,
+  onOpenEntry,
 }: {
   m: UiMessage;
   userLabel?: string;
@@ -330,16 +419,33 @@ function MessageView({
   failedMessage: string;
   heldMessage: string;
   onCopy: (text: string) => void;
+  onMenu: (m: UiMessage) => void;
+  onOpenEntry: (id: string) => void;
 }) {
   if (m.role === 'event') {
-    return m.eventKind === 'crisis_resources' ? <CrisisCard lines={crisisLines} /> : null;
+    if (m.eventKind === 'crisis_resources') return <CrisisCard lines={crisisLines} />;
+    if (m.eventKind === 'journal_shared') {
+      const ref = m.eventRef;
+      return <SharedEntryCard onPress={ref ? () => onOpenEntry(ref) : undefined} />;
+    }
+    return null;
   }
+  // Only a message the server has stored in full can be saved to the journal.
+  const menu = m.id && (m.status === 'done' || m.status === 'sent') ? () => onMenu(m) : undefined;
   if (m.role === 'assistant') {
-    return <ChatBubble sender="ai" text={m.text} showActions={m.status === 'done'} onCopy={() => onCopy(m.text)} />;
+    return (
+      <ChatBubble
+        sender="ai"
+        text={m.text}
+        showActions={m.status === 'done'}
+        onCopy={() => onCopy(m.text)}
+        onLongPress={menu}
+      />
+    );
   }
   return (
     <View className={m.status === 'sending' ? 'opacity-60' : undefined}>
-      <ChatBubble sender="user" label={userLabel} text={m.text} />
+      <ChatBubble sender="user" label={userLabel} text={m.text} onLongPress={menu} />
       {m.status === 'failed' ? <MessageFailed message={failedMessage} onRetry={onRetry} className="pt-xxs" /> : null}
       {m.status === 'held' ? <InlineMessage tone="info" message={heldMessage} className="self-end pt-xxs" /> : null}
     </View>

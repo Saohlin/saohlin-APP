@@ -5,6 +5,7 @@ import {
   Easing,
   Keyboard,
   Platform,
+  Pressable,
   StyleSheet,
   TextInput,
   View,
@@ -72,6 +73,7 @@ export function ChatBubble({
   label,
   onListen,
   onCopy,
+  onLongPress,
   showActions,
   className,
 }: {
@@ -81,6 +83,8 @@ export function ChatBubble({
   label?: string;
   onListen?: () => void;
   onCopy?: () => void;
+  /** Long press on the bubble opens the message's own menu (copy, save to the journal). */
+  onLongPress?: () => void;
   showActions?: boolean;
   className?: string;
 }) {
@@ -96,9 +100,13 @@ export function ChatBubble({
         <Text variant="label" tone="purple" className="mb-xs px-xxs">
           {who}
         </Text>
-        <View
+        <Pressable
           accessibilityRole="text"
           accessibilityLabel={`${who}: ${text}`}
+          accessibilityActions={onLongPress ? [{ name: 'longpress', label: t('a11y.more') }] : undefined}
+          onAccessibilityAction={onLongPress ? () => onLongPress() : undefined}
+          onLongPress={onLongPress}
+          delayLongPress={350}
           style={[shadow.sm, GLASS_EDGE]}
           className={cx(
             'overflow-hidden rounded-card',
@@ -150,7 +158,7 @@ export function ChatBubble({
               </View>
             ) : null}
           </View>
-        </View>
+        </Pressable>
       </View>
     </View>
   );

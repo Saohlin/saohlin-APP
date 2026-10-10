@@ -8,6 +8,7 @@ import {
   GlassCard,
   IconButton,
   InlineMessage,
+  ListRow,
   LiquidButton,
   Screen,
   SectionHeader,
@@ -18,6 +19,7 @@ import {
   TopBar,
 } from '../../../components/ui';
 import { clearMemory, forgetNote, getMemory, type Memory as MemoryData } from '../../../lib/api/memory';
+import { journalStore } from '../../../lib/journal/store';
 import { useI18n } from '../../../i18n';
 import type { Dictionary, Path } from '../../../i18n';
 
@@ -60,7 +62,7 @@ function Fact({ label, value }: { label: string; value: string }) {
  * "Forget everything" clears the last two; the profile stays.
  */
 export default function Memory() {
-  const { t } = useI18n();
+  const { t, tp } = useI18n();
   const router = useRouter();
   const { profile, context } = useSession();
   const [memory, setMemory] = useState<MemoryData | null>(null);
@@ -112,7 +114,9 @@ export default function Memory() {
     setBusy(true);
     try {
       await clearMemory();
-      setMemory({ notes: [], conversations: [], momentsCount: 0 });
+      // Forgetting everything also un-shares every journal entry (the entries themselves stay).
+      setMemory({ notes: [], conversations: [], momentsCount: 0, sharedEntriesCount: 0 });
+      journalStore.changed();
       setFailed(false);
     } catch {
       setFailed(true);
@@ -121,7 +125,9 @@ export default function Memory() {
     }
   };
 
-  const hasLearned = !!memory && (memory.notes.length > 0 || memory.conversations.length > 0 || memory.momentsCount > 0);
+  const hasLearned =
+    !!memory &&
+    (memory.notes.length > 0 || memory.conversations.length > 0 || memory.momentsCount > 0 || memory.sharedEntriesCount > 0);
 
   return (
     <Screen
@@ -202,6 +208,20 @@ export default function Memory() {
               </Text>
             </GlassCard>
           ))}
+        </>
+      ) : null}
+
+      {memory && memory.sharedEntriesCount > 0 ? (
+        <>
+          <SectionHeader title={t('profile.memoryJournal')} className="pt-lg" />
+          <GlassCard className="mt-sm" padding="px-md">
+            <ListRow
+              icon="journal"
+              title={tp('profile.memorySharedEntries', memory.sharedEntriesCount)}
+              subtitle={t('profile.memorySharedHint')}
+              onPress={() => router.push({ pathname: '/journal/archive', params: { shared: '1' } })}
+            />
+          </GlassCard>
         </>
       ) : null}
 

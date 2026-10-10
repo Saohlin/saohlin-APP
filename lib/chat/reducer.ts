@@ -22,6 +22,8 @@ export type UiMessage = {
   clientMsgId?: string;
   mode?: string | null;
   eventKind?: string | null;
+  /** What an event points at: the journal entry of a `journal_shared` event. */
+  eventRef?: string | null;
   createdAt: string;
 };
 
@@ -72,6 +74,7 @@ export type StoredMessage = {
   mode: string | null;
   clientMsgId: string | null;
   eventKind: string | null;
+  eventRef?: string | null;
   createdAt: string;
 };
 
@@ -106,6 +109,7 @@ function fromStored(m: StoredMessage): UiMessage {
     clientMsgId: m.clientMsgId ?? undefined,
     mode: m.mode,
     eventKind: m.eventKind,
+    eventRef: m.eventRef ?? null,
     createdAt: m.createdAt,
   };
 }
