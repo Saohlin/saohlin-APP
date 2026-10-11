@@ -19,6 +19,7 @@ import {
   PLATFORM,
   RESET_PASSWORD_URL,
 } from '../lib/config';
+import { clearFeedbackDraft } from '../lib/feedback/draft';
 import { clearAllDrafts } from '../lib/journal/drafts';
 import { setHapticsEnabled } from '../lib/haptics';
 import { journalStore } from '../lib/journal/store';
@@ -433,7 +434,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.rpc('delete_my_account');
     if (error) throw error;
     // Unsaved journal text kept on this phone goes with the account.
-    if (userId) await clearAllDrafts(userId);
+    if (userId) await Promise.all([clearAllDrafts(userId), clearFeedbackDraft(userId)]);
     journalStore.own(null);
     pending.current = {};
     setStagedProfile(null);

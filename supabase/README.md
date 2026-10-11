@@ -181,3 +181,28 @@ callable by roles that shouldn't have it.
   else stays private.
 - Sensitive text is stored with `private.encrypt(user_id, value)` and read back
   through a security definer function.
+
+## Feedback (screen 48)
+
+`send_feedback` stores the message encrypted; the `notify` function emails it to
+Claudia through Resend, with the sender's address as reply-to. The database wakes
+`notify` when a message arrives and every minute while one is unsent, so a failed
+email is retried (up to `feedback.notify_max_attempts`) and the message is never lost.
+
+**Emailing is switched off for now (11 Oct 2026).** `feedback.notify_enabled` is `0`:
+messages are stored, none is emailed, and no retry is used up. To turn it on:
+`update public.app_config set value = '1' where key = 'feedback.notify_enabled';`
+Every message still waiting is then emailed, oldest first. Steps 2 and 3 below are
+only needed before that.
+
+Deploy:
+
+1. `supabase db push` (migration `20261012100000_feedback`).
+2. `supabase secrets set RESEND_API_KEY=...` (a Resend key allowed to send from saohlin.com).
+   Optional: `FEEDBACK_TO` (default `info@saohlin.com`), `FEEDBACK_FROM`
+   (default `SAOHLIN <feedback@saohlin.com>`). `JOBS_SECRET` is reused.
+3. `supabase functions deploy notify --no-verify-jwt`.
+4. Nothing new in Vault: the address is derived from `jobs_function_url`.
+
+Check: send a message from the app, then
+`select created_at, notified_at, notify_attempts, notify_error from public.feedback order by created_at desc limit 5;`
