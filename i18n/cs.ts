@@ -25,6 +25,10 @@ export const cs = {
   },
 
   common: {
+    // Shown when a control is tapped whose feature is not built yet. DRAFT wording.
+    inProgressTitle: 'Připravujeme',
+    inProgress: 'Na této funkci ještě pracujeme. Už brzy tu bude.',
+    understood: 'Rozumím',
     enter: 'Vstoupit',
     continue: 'Pokračovat',
     next: 'Další',
@@ -331,7 +335,9 @@ export const cs = {
     forYou: 'Karta pro tebe.',
     drawPrompt: 'Mysli na svoji otázku nebo situaci a vyber si jednu kartu.',
     trustIntuition: 'Důvěřuj své intuici.',
-    meaning: 'Význam karty',
+    soulNeeds: 'Co tvoje duše potřebuje',
+    concreteStep: 'Tvůj konkrétní krok',
+    mantra: 'Mantra',
     askAi: 'Zeptat se CLAUDIA AI',
     wantReading: 'Chci svůj výklad od CLAUDIA AI',
     library: 'Všichni průvodci',
@@ -443,6 +449,15 @@ export const cs = {
     orWrite: 'Nebo mi napiš na:',
     sent: 'Děkuju. Tvoje zpráva dorazila.',
     messageRequired: 'Napiš prosím zprávu, než ji odešleš.',
+    // DRAFT from here to `counter`: wording is Claudia's to approve (G5.3).
+    sending: 'Odesílám…',
+    backToChat: 'Zpět do chatu',
+    writeAnother: 'Napsat další zprávu',
+    sendOffline: 'Bez připojení zprávu neodešlu. Tvůj text tu zůstává, zkus to znovu, až budeš online.',
+    sendFailed: 'Zprávu se nepodařilo odeslat. Tvůj text tu zůstává, zkus to prosím znovu.',
+    limit: 'Dnes mi od tebe přišlo hodně zpráv. Další můžeš poslat zítra, nebo mi napiš emailem.',
+    maxReached: 'Zpráva má nejvyšší možnou délku.',
+    counter: '{count} z {max} znaků',
     body1:
       'Na vývoji této aplikace neustále pracuji. AI pravidelně obohacuji o svůj nový obsah, poznatky, videa i informační zdroje, aby ti mohla předávat co nejpřesnější a nejaktuálnější odpovědi.',
     // Not currently shown on the feedback screen; kept for later use.

@@ -19,6 +19,7 @@ module.exports = {
       // Must match theme/typography.ts exactly. These classes are what render.
       fontSize: {
         display: ['34px', { lineHeight: '40px', letterSpacing: '1.6px' }],
+        'guide-name': ['27px', { lineHeight: '33px', letterSpacing: '1.4px' }],
         'title-lg': ['22px', { lineHeight: '31px', letterSpacing: '2.2px' }],
         greeting: ['18.5px', { lineHeight: '26px', letterSpacing: '0.3px' }],
         title: ['15px', { lineHeight: '23px', letterSpacing: '1.8px' }],

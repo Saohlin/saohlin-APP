@@ -1,10 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import {
+  Dialog,
   GlassCard,
   GuideCard,
+  HEADER_HEIGHT,
+  IconButton,
   LiquidButton,
   Screen,
   Text,
@@ -12,22 +15,25 @@ import {
 } from '../../../components/ui';
 import { guideById } from '../../../guides';
 import { useI18n } from '../../../i18n';
+import { fonts } from '../../../theme';
 
 /**
- * Guide detail: artwork beside the name and introduction, then a description
- * panel that fills the remaining space and scrolls when the text is longer.
- * Only one guide has final copy; the rest use placeholder text flagged in dev builds.
+ * Guide detail: the name and its three keywords between the back and bookmark
+ * buttons, the artwork, one quote line, then three panels (what your soul
+ * needs, your concrete step, mantra). The header stays put; the rest scrolls.
+ * Only Orel has final copy; the rest use placeholder text flagged in dev builds.
  */
 
 /** Artwork width; height follows the 2:3 ratio. */
-const ART_WIDTH = 141;
-const ART_GAP = 18;
+const ART_WIDTH = 148;
 
 export default function GuideDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useI18n();
   const router = useRouter();
-  const [saved, setSaved] = useState(false);
+  // Saving a guide and the reading from a card are not built yet: both buttons say so.
+  const [notice, setNotice] = useState(false);
+  const hideNotice = useCallback(() => setNotice(false), []);
 
   const guide = guideById(id);
 
@@ -43,76 +49,112 @@ export default function GuideDetail() {
     );
   }
 
+  const panels = [
+    { title: t('cards.soulNeeds'), text: guide.soulNeeds },
+    { title: t('cards.concreteStep'), text: guide.step },
+  ].filter((p) => !!p.text);
+
   return (
+    // Unpadded so the panels' shadows are not cut off at the scroller's sides;
+    // each region carries the gutter itself.
     <Screen
+      padded={false}
+      pinHeader={false}
       footer={
-        <LiquidButton title={t('cards.wantReading')} onPress={() => router.push('/chat')} />
+        <View className="px-gutter">
+          {/* The reading from a drawn card is not built yet (the chat does not know the card). */}
+          <LiquidButton title={t('cards.wantReading')} onPress={() => setNotice(true)} />
+        </View>
       }
       header={
-        <TopBar
-          onBack={() => router.back()}
-          action="bookmark"
-          actionLabel={t('cards.library')}
-          onActionPress={() => setSaved((s) => !s)}
-        />
+        // The buttons stay on the first line when a long name wraps to two.
+        <View className="flex-row items-start pb-xs">
+          <View className="w-[40px] justify-center" style={{ height: HEADER_HEIGHT }}>
+            <IconButton name="back" label={t('a11y.back')} onPress={() => router.back()} />
+          </View>
+
+          <View className="flex-1 justify-center px-xs" style={{ minHeight: HEADER_HEIGHT }}>
+            <Text variant="guideName" tone="brand" center numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5}>
+              {guide.name}
+            </Text>
+            {guide.keywords?.length ? (
+              <Text variant="label" center className="pt-xxs">
+                {guide.keywords.join('  •  ')}
+              </Text>
+            ) : null}
+          </View>
+
+          <View className="w-[40px] items-end justify-center" style={{ height: HEADER_HEIGHT }}>
+            <IconButton
+              name="bookmark"
+              label={t('cards.library')}
+              onPress={() => setNotice(true)}
+            />
+          </View>
+        </View>
       }>
-      <View className="flex-row pt-xl">
-        <GuideCard source={guide.art} name={guide.name} width={ART_WIDTH} />
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="px-gutter pt-xs pb-lg"
+        showsVerticalScrollIndicator={false}>
+        <View className="items-center">
+          <GuideCard source={guide.art} name={guide.name} width={ART_WIDTH} />
+        </View>
 
-        <View className="flex-1" style={{ marginLeft: ART_GAP }}>
-          {/* Uses `title` so long names fit the column without shrinking too far. */}
-          <Text variant="title" numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6}>
-            {guide.name}
+        {guide.quote ? (
+          <Text variant="label" center className="pt-md">
+            {`„${guide.quote}“`}
           </Text>
+        ) : null}
 
-          {/* No hard line breaks in the intro text. */}
-          {guide.intro ? (
-            <Text variant="body" className="pt-md">
-              {guide.intro}
+        <View className="gap-sm pt-md">
+          {panels.map((p) => (
+            <GlassCard key={p.title}>
+              <Text variant="section" tone="purple">
+                {p.title}
+              </Text>
+              <Text variant="chat" className="pt-xs">
+                {p.text}
+              </Text>
+            </GlassCard>
+          ))}
+
+          {guide.mantra ? (
+            <GlassCard>
+              <Text variant="section" tone="purple">
+                {t('cards.mantra')}
+              </Text>
+              <Text variant="body" className="pt-xs" style={{ fontFamily: fonts.bodyItalic }}>
+                {`„${guide.mantra}“`}
+              </Text>
+            </GlassCard>
+          ) : null}
+
+          {!panels.length && !guide.mantra ? (
+            <Text variant="body" tone="tertiary" center>
+              {t('cards.descriptionPending')}
             </Text>
           ) : null}
         </View>
-      </View>
 
-      {/* The panel fills the remaining space rather than hugging its text. */}
-      <GlassCard className="mt-md flex-1" padding="flex-1 p-lg">
-        <Text variant="title" tone="purple">
-          {t('cards.meaning')}
-        </Text>
+        {/* Dev-only marker for placeholder copy. Never shown in release builds. */}
+        {__DEV__ && guide.draftCopy ? (
+          <Text variant="micro" tone="tertiary" center className="pt-md">
+            ukázkový text, čeká na Claudiiny popisy
+          </Text>
+        ) : null}
 
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="pt-md pb-xs"
-          showsVerticalScrollIndicator={false}>
-          {guide.meaning ? (
-            <>
-              <Text variant="body">{guide.meaning}</Text>
-              {guide.guidance ? (
-                <Text variant="body" className="pt-xl">
-                  {guide.guidance}
-                </Text>
-              ) : null}
-            </>
-          ) : (
-            <Text variant="body" tone="tertiary">
-              {t('cards.descriptionPending')}
-            </Text>
-          )}
+      </ScrollView>
 
-          {/* Dev-only marker for placeholder copy. Never shown in release builds. */}
-          {__DEV__ && guide.draftCopy ? (
-            <Text variant="micro" tone="tertiary" className="pt-md">
-              ukázkový text, čeká na Claudiiny popisy
-            </Text>
-          ) : null}
-        </ScrollView>
-      </GlassCard>
-
-      {saved ? (
-        <Text variant="micro" tone="tertiary" center className="pt-xs">
-          {t('cards.drawHistory')}
-        </Text>
-      ) : null}
+      <Dialog
+        single
+        visible={notice}
+        onClose={hideNotice}
+        title={t('common.inProgressTitle')}
+        message={t('common.inProgress')}
+        confirmLabel={t('common.understood')}
+        onConfirm={hideNotice}
+      />
     </Screen>
   );
 }

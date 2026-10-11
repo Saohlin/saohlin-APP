@@ -5,6 +5,8 @@ import { DRAFT_COPY } from './draft-copy';
 /**
  * The 23 Guides and their artwork. (Always "Průvodci", never tarot.)
  *
+ * Only Orel has final copy in the current format (name, keywords, quote, three panels).
+ *
  * Guide numbers run 00–22 while artwork files run 01–23, so the artwork is
  * index + 1. Images are 900 × 1350 JPEG re-encodes of the 1200 × 1800 originals.
  */
@@ -13,17 +15,16 @@ export type Guide = {
   id: number;
   name: string;
   art: ImageSourcePropType;
-  /**
-   * Short introduction shown beside the artwork. No hard line breaks; it wraps
-   * in a narrow column. When absent, `guideById` derives it from `meaning`.
-   */
-  intro?: string;
-  /**
-   * Meaning, then guidance. Line breaks are stored in the copy on purpose.
-   * Only Slunce has final copy so far.
-   */
-  meaning?: string;
-  guidance?: string;
+  /** The three words under the name. */
+  keywords?: string[];
+  /** One line under the artwork. Stored without quotation marks. */
+  quote?: string;
+  /** "Co tvoje duše potřebuje": a short paragraph with no hard line breaks. */
+  soulNeeds?: string;
+  /** "Tvůj konkrétní krok": a short paragraph with no hard line breaks. */
+  step?: string;
+  /** Line breaks are stored in the copy on purpose. Stored without quotation marks. */
+  mantra?: string;
   /** True when the copy comes from `draft-copy.ts`. Marked on screen in dev builds. */
   draftCopy?: boolean;
 };
@@ -45,21 +46,21 @@ export const GUIDES: Guide[] = [
   { id: 11, name: 'Ježíš', art: require('../assets/cards/12.jpg') },
   { id: 12, name: 'Strom života (Baobab)', art: require('../assets/cards/13.jpg') },
   { id: 13, name: 'Karkadan', art: require('../assets/cards/14.jpg') },
-  { id: 14, name: 'Orel', art: require('../assets/cards/15.jpg') },
   {
-    id: 15,
-    name: 'Slunce',
-    art: require('../assets/cards/16.jpg'),
-    meaning:
-      'Slunce přináší radost, úspěch a jasno.\n' +
-      'Je to energie vitality, sebevědomí a životní síly.\n' +
-      'Vše se vyvíjí správným směrem a ty jsi\n' +
-      'na své cestě ve světle.',
-    guidance:
-      'Otevírej se radosti a vděčnosti.\n' +
-      'Důvěřuj životu, podporuje tě.\n' +
-      'Tvé světlo má sílu inspirovat ostatní.',
+    id: 14,
+    name: 'Orel',
+    art: require('../assets/cards/15.jpg'),
+    keywords: ['Svoboda', 'Vize', 'Nadhled'],
+    quote: 'Větší perspektiva mění vše.',
+    soulNeeds:
+      'Tvoje duše potřebuje nadhled. Podívej se na situaci z vyšší perspektivy a uvidíš ' +
+      'souvislosti, které ti teď unikají. To, co se v tuto chvíli děje, má větší smysl, než se zdá.',
+    step:
+      'Zastav se. Udělej krok zpět a podívej se na situaci jinak. Napiš si 3 nové úhly pohledu, ' +
+      'které ti přinášejí klid, jasnost a nové možnosti.',
+    mantra: 'Vidím celý obraz.\nVšechno je na svém místě.',
   },
+  { id: 15, name: 'Slunce', art: require('../assets/cards/16.jpg') },
   { id: 16, name: 'Křišťál', art: require('../assets/cards/17.jpg') },
   { id: 17, name: 'Bodhidharma', art: require('../assets/cards/18.jpg') },
   { id: 18, name: 'Paj Mej', art: require('../assets/cards/19.jpg') },
@@ -77,23 +78,22 @@ export function guideById(id: number | string | undefined): Guide | undefined {
   const n = typeof id === 'string' ? Number.parseInt(id, 10) : id;
   const guide = Number.isFinite(n) ? GUIDES.find((g) => g.id === n) : undefined;
   if (!guide) return undefined;
-  if (guide.meaning) return withIntro(guide);
+  if (guide.soulNeeds) return guide;
   const draft = DRAFT_COPY[guide.id];
-  return draft ? withIntro({ ...guide, ...draft, draftCopy: true }) : guide;
+  return draft ? { ...guide, ...fromDraft(draft), draftCopy: true } : guide;
 }
 
 /**
- * Splits two-block copy into intro + meaning: the first two sentences become the
- * intro. Temporary; remove once guides set `intro` directly.
+ * Fits the older two-block placeholder text into the three panels: the meaning
+ * becomes "what your soul needs", the guidance lines become the step, and its
+ * last line stands in for the mantra. Placeholders have no keywords or quote.
  */
-function withIntro(guide: Guide): Guide {
-  if (guide.intro || !guide.meaning) return guide;
-  const lines = guide.meaning.split('\n');
-  if (lines.length < 3) return guide;
+function fromDraft(draft: { meaning: string; guidance: string }): Pick<Guide, 'soulNeeds' | 'step' | 'mantra'> {
+  const lines = draft.guidance.split('\n');
   return {
-    ...guide,
-    intro: lines.slice(0, 2).join(' '),
-    meaning: lines.slice(2).join('\n'),
+    soulNeeds: draft.meaning.replace(/\n/g, ' '),
+    step: lines.slice(0, -1).join(' '),
+    mantra: lines[lines.length - 1],
   };
 }
 

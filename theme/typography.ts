@@ -32,6 +32,8 @@ const BODY_FACES = {
 export const fonts = {
   display: 'Michroma_400Regular',
   ...BODY_FACES[BODY_FONT],
+  /** The mantra on the guide screen. Inter only; the body font switch does not cover it. */
+  bodyItalic: 'Inter_400Regular_Italic',
 } as const;
 
 const michroma = (
@@ -59,11 +61,13 @@ const inter = (
 });
 
 export const type = {
-  /**
-   * Guide name on the card detail screen. Long names wrap to two lines and
-   * shrink to fit the column.
-   */
+  /** The largest brand text: the paywall price, the feedback thank-you. */
   display: michroma(34, 40, 1.6),
+  /**
+   * Guide name on the card detail screen, between the back and bookmark
+   * buttons. Long names wrap to two lines and shrink to fit.
+   */
+  guideName: michroma(27, 33, 1.4),
   /** Screen titles: VYTVOŘIT ÚČET, POJĎME O KROK DÁL */
   titleLg: michroma(22, 31, 2.2),
   /** Chat greeting ("Ahoj, Terezo."). The only Michroma token that isn't uppercase. */

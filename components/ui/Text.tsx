@@ -4,6 +4,7 @@ import { cx } from './cx';
 
 type Variant =
   | 'display'
+  | 'guideName'
   | 'titleLg'
   | 'title'
   | 'greeting'
@@ -25,6 +26,7 @@ type Variant =
  */
 const VARIANTS: Record<Variant, string> = {
   display: 'font-display text-display uppercase',
+  guideName: 'font-display text-guide-name uppercase',
   titleLg: 'font-display text-title-lg uppercase',
   // The only Michroma variant without `uppercase`.
   greeting: 'font-display text-greeting',
@@ -49,6 +51,7 @@ const VARIANTS: Record<Variant, string> = {
  */
 const VARIANT_TONE: Record<Variant, NonNullable<TextProps['tone']>> = {
   display: 'strong',
+  guideName: 'strong',
   titleLg: 'strong',
   greeting: 'strong',
   title: 'strong',

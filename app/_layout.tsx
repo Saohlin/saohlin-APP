@@ -9,6 +9,7 @@ import {
 
 // Import individual weights; the package root pulls in all 18 Inter weights.
 import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_400Regular_Italic } from '@expo-google-fonts/inter/400Regular_Italic';
 import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Michroma_400Regular } from '@expo-google-fonts/michroma/400Regular';
@@ -46,6 +47,7 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Michroma_400Regular,
     Inter_400Regular,
+    Inter_400Regular_Italic,
     Inter_500Medium,
     Inter_600SemiBold,
     Manrope_400Regular,

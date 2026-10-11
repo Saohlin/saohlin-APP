@@ -158,16 +158,17 @@ export const DRAFT_COPY: Record<number, { meaning: string; guidance: string }> =
       'Nenech si mluvit do svého směru.\n' +
       'Síla a jemnost jdou spolu.',
   },
-  14: {
+  // Claudia's own wording from the earlier two-block format, kept until she sends Slunce in the new one.
+  15: {
     meaning:
-      'Orel přináší nadhled a jasný pohled.\n' +
-      'Je to energie svobody, vize a širší perspektivy.\n' +
-      'Z výšky uvidíš souvislosti,\n' +
-      'které zblízka nedávaly smysl.',
+      'Slunce přináší radost, úspěch a jasno.\n' +
+      'Je to energie vitality, sebevědomí a životní síly.\n' +
+      'Vše se vyvíjí správným směrem a ty jsi\n' +
+      'na své cestě ve světle.',
     guidance:
-      'Udělej krok zpět a podívej se znovu.\n' +
-      'Nezůstávej v detailu.\n' +
-      'Tvá vize ti ukáže směr.',
+      'Otevírej se radosti a vděčnosti.\n' +
+      'Důvěřuj životu, podporuje tě.\n' +
+      'Tvé světlo má sílu inspirovat ostatní.',
   },
   16: {
     meaning:

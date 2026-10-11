@@ -112,8 +112,11 @@ export function Dialog({
   destructive,
   busy,
   plainCancel,
+  single,
   className,
 }: {
+  /** A notice with one button and no second choice. */
+  single?: boolean;
   /** Cancel as bold text under the single button, instead of a second button. */
   plainCancel?: boolean;
   visible: boolean;
@@ -174,7 +177,7 @@ export function Dialog({
               ) : (
                 <LiquidButton title={confirmLabel} onPress={onConfirm} loading={busy} />
               )}
-              {plainCancel ? (
+              {single ? null : plainCancel ? (
                 // One button only: the way out is a bold line of text under it.
                 <Pressable
                   accessibilityRole="button"

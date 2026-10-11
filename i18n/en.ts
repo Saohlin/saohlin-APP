@@ -22,6 +22,9 @@ export const en: Dictionary = {
   },
 
   common: {
+    inProgressTitle: 'In progress',
+    inProgress: 'We are still working on this feature. It will be here soon.',
+    understood: 'Got it',
     enter: 'Enter',
     continue: 'Continue',
     next: 'Next',
@@ -322,7 +325,9 @@ export const en: Dictionary = {
     forYou: 'A card for you.',
     drawPrompt: 'Hold your question or situation in mind and choose one card.',
     trustIntuition: 'Trust your intuition.',
-    meaning: 'What this card means',
+    soulNeeds: 'What your soul needs',
+    concreteStep: 'Your concrete step',
+    mantra: 'Mantra',
     askAi: 'Ask CLAUDIA AI',
     wantReading: 'I want my reading from CLAUDIA AI',
     library: 'All guides',
@@ -429,6 +434,14 @@ export const en: Dictionary = {
     orWrite: 'Or write to me at:',
     sent: 'Thank you. Your message arrived.',
     messageRequired: 'Please write a message before sending it.',
+    sending: 'Sending…',
+    backToChat: 'Back to chat',
+    writeAnother: 'Write another message',
+    sendOffline: 'I can’t send this without a connection. Your text stays here; try again once you are online.',
+    sendFailed: 'The message could not be sent. Your text stays here; please try again.',
+    limit: 'You have sent me a lot of messages today. You can send another tomorrow, or write to me by email.',
+    maxReached: 'The message is at its maximum length.',
+    counter: '{count} of {max} characters',
     body1:
       'I work on this app constantly. I keep giving the AI my new material, notes and videos and sources, so that it can answer you as accurately and as currently as possible.',
     body2:
