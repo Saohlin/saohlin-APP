@@ -35,7 +35,8 @@ function MeshBlob({ cx, cy, r, color }: { cx: number; cy: number; r: number; col
  * remounts and stays still while screens transition. Light theme paints the
  * image; dark theme draws soft blobs (no dark artwork yet).
  */
-export function MeshBackdrop() {
+export function MeshBackdrop({ reversed = false }: { /** Flipped top to bottom. Used behind modals, so a sheet reads as a different layer. */ reversed?: boolean }) {
+  const flip = reversed ? { transform: [{ scaleY: -1 }] } : null;
   const { width, height } = useWindowDimensions();
   const { mesh, scheme } = useTheme();
 
@@ -43,7 +44,7 @@ export function MeshBackdrop() {
     return (
       // Base colour under the image so a slow decode never shows white or black.
       <View
-        style={[StyleSheet.absoluteFill, { backgroundColor: mesh.base }]}
+        style={[StyleSheet.absoluteFill, { backgroundColor: mesh.base }, flip]}
         pointerEvents="none">
 {/* Explicit width and height: an Image lays out at its intrinsic size, so
    `absoluteFill` alone would render it at full pixel size. The drawer's copy
@@ -62,7 +63,7 @@ export function MeshBackdrop() {
   }
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, flip]} pointerEvents="none">
       <Canvas style={{ width, height }}>
         <Fill color={mesh.base} />
 

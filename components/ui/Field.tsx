@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Pressable,
   TextInput,
@@ -277,10 +277,92 @@ export function SearchField({
         placeholderTextColor={colors.textPlaceholder}
         selectionColor={colors.accent}
         accessibilityLabel={t('a11y.search')}
-        className="flex-1 text-ink"
+        // Full height of the pill, so the placeholder and the typed text sit on its centre line.
+        className="h-full flex-1 text-ink"
         {...input}
         style={[INPUT_TYPE, input.style]}
       />
+    </View>
+  );
+}
+
+/**
+ * One-time code entry: a row of glass cells over a single hidden input, so
+ * paste and the keyboard's code autofill fill every cell at once.
+ * `value` is digits only; the caller trims and validates.
+ */
+export function CodeField({
+  value,
+  onChangeText,
+  length,
+  label,
+  error,
+  disabled,
+  autoFocus,
+  className,
+}: {
+  value: string;
+  onChangeText: (text: string) => void;
+  length: number;
+  /** Read by screen readers; nothing is drawn for it. */
+  label: string;
+  error?: string;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  className?: string;
+}) {
+  const ref = useRef<TextInput>(null);
+  const [focused, setFocused] = useState(false);
+  // The cell the next digit lands in; stays on the last one when the code is full.
+  const cursor = Math.min(value.length, length - 1);
+
+  return (
+    <View className={cx('w-full gap-xs', className)}>
+      <Pressable onPress={() => ref.current?.focus()} className="flex-row gap-xs">
+        {Array.from({ length }).map((_, i) => (
+          <View
+            key={i}
+            className={cx(
+              'h-[60px] flex-1 items-center justify-center rounded-input border',
+              error
+                ? 'border-error-edge bg-error-bg/40'
+                : focused && i === cursor
+                  ? 'border-edge-focus bg-glass/glass'
+                  : 'border-edge-input bg-glass/glass',
+            )}>
+            <Text variant="titleLg" tone={error ? 'error' : 'strong'}>
+              {value[i] ?? ''}
+            </Text>
+          </View>
+        ))}
+        <TextInput
+          ref={ref}
+          value={value}
+          onChangeText={onChangeText}
+          editable={!disabled}
+          autoFocus={autoFocus}
+          keyboardType="number-pad"
+          inputMode="numeric"
+          textContentType="oneTimeCode"
+          autoComplete="one-time-code"
+          maxLength={length}
+          caretHidden
+          accessibilityLabel={label}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          // Covers the cells so a tap anywhere focuses it. Near-zero rather than
+          // zero opacity: iOS skips code autofill on a fully transparent input.
+          style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: 0.02 }}
+        />
+      </Pressable>
+      {error ? (
+        <View className="flex-row items-center justify-center gap-xxs">
+          <Icon name="alert" size={12} />
+          <Text variant="micro" tone="error">
+            {error}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }

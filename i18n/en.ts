@@ -52,6 +52,10 @@ export const en: Dictionary = {
     lastNamePlaceholder: 'Your last name…',
     emailPlaceholder: 'Your email…',
     passwordPlaceholder: 'Create a password…',
+    currentPasswordPlaceholder: 'Your password…',
+    signInSubtitle: 'Welcome back. Your path is waiting.',
+    signUpSubtitle: 'One last step before your path begins.',
+    noAccount: 'New here?',
     forgotPassword: 'Forgot password',
     resetPassword: 'Reset password',
     haveAccount: 'Already have an account?',
@@ -191,6 +195,10 @@ export const en: Dictionary = {
     call: 'Call',
     loadOlder: 'Load older messages',
     untitled: 'Conversation of {date}',
+    historyToday: 'Today',
+    historyYesterday: 'Yesterday',
+    historyWeek: 'Last 7 days',
+    historyEarlier: 'Earlier',
     historyEmpty: 'No conversations yet',
   },
 
@@ -288,7 +296,7 @@ export const en: Dictionary = {
     all: 'All',
     sharedOnly: 'Shared',
     dayFilter: 'Entries from {date}',
-    searchPlaceholder: 'Search the journal…',
+    searchPlaceholder: 'Search your journal…',
     searchHint: 'Type at least two characters.',
     searchEmptyTitle: 'Nothing found',
     searchEmptyMessage: 'Try another word or a shorter phrase.',
@@ -326,6 +334,8 @@ export const en: Dictionary = {
 
   profile: {
     title: 'Profile',
+    subtitle: 'What I know about you, and where you can change it.',
+    more: 'More',
     edit: 'Edit profile',
     memory: 'Memory',
     memoryTitle: 'What CLAUDIA AI remembers about me',
@@ -338,8 +348,6 @@ export const en: Dictionary = {
     forgetAllKeeps: 'Your profile and answers stay.',
     memoryNotes: 'What I remember',
     memoryLoadFailed: 'Memory could not be loaded.',
-    vocative: 'How I greet you',
-    vocativeHint: 'The form of your name I use when I speak to you, for example Terezo.',
     aboutYou: 'About you',
     saved: 'Saved.',
     memoryIntro: 'This is what CLAUDIA AI knows about you right now. You can change any of it.',
@@ -358,6 +366,11 @@ export const en: Dictionary = {
 
   settings: {
     title: 'Settings',
+    subtitle: 'How the app behaves, your data, and your account.',
+    preferences: 'Preferences',
+    privacy: 'Your data',
+    voiceHint: 'Listen to replies read aloud.',
+    hapticsHint: 'A light tap when you touch things.',
     notifications: 'Notifications',
     notificationsDenied: 'Notifications are turned off in your phone settings.',
     voice: 'Voice playback',
@@ -371,17 +384,25 @@ export const en: Dictionary = {
 
   membership: {
     title: 'Membership',
+    statusActive: 'Active member',
+    // One word between asterisks is drawn bold and in the accent colour.
+    invite: 'Your *path* does not end here.',
+    getStarted: 'Get started',
+    statusNone: 'No membership',
+    trialLeft: 'Free replies left: {remaining} of {total}',
     activate: 'Activate membership',
     manage: 'Manage membership',
     restore: 'Restore purchase',
     perMonth: '{price} / month',
     renewsOn: 'Renews on {date}',
     cancel: 'Cancel membership',
-    paywallTitle: 'Let us continue together',
+    paywallTitle: 'Let’s continue',
     paywallMessage: 'You have used your free reading. Membership gives you CLAUDIA AI in full.',
     billingProblemTitle: 'Payment did not go through',
     billingProblemMessage: 'Check your payment method so you do not lose access.',
     noCommitment: 'No commitment.',
+    includes: 'What membership gives you',
+    renewNote: 'Renews automatically each month. Cancel anytime.',
   },
 
   legal: {

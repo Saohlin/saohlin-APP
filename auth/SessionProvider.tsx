@@ -20,6 +20,7 @@ import {
   RESET_PASSWORD_URL,
 } from '../lib/config';
 import { clearAllDrafts } from '../lib/journal/drafts';
+import { setHapticsEnabled } from '../lib/haptics';
 import { journalStore } from '../lib/journal/store';
 import { supabase } from '../lib/supabase';
 import type {
@@ -444,6 +445,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     if (authSession) await loadMe();
   }, [authSession, loadMe]);
+
+  // The Haptics switch in Settings governs every haptic in the app. Signed out,
+  // or before the settings load, they are on.
+  const hapticsOn = me?.settings?.haptics ?? DEFAULT_SETTINGS.haptics;
+  useEffect(() => {
+    setHapticsEnabled(hapticsOn);
+  }, [hapticsOn]);
 
   const value = useMemo<SessionValue>(
     () => ({

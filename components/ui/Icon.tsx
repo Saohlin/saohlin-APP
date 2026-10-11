@@ -10,6 +10,7 @@ import {
   CaretRight,
   ChatCircle,
   Check,
+  Checks,
   Clock,
   Copy,
   DotsThree,
@@ -52,7 +53,7 @@ export type IconName =
   | 'chat' | 'cards' | 'journal' | 'profile' | 'menu' | 'settings' | 'mail'
   | 'mic' | 'send' | 'speaker' | 'copy' | 'lock' | 'bookmark' | 'search'
   | 'calendar' | 'eye' | 'eye-off' | 'gift' | 'heart' | 'shield' | 'back'
-  | 'forward' | 'close' | 'check' | 'chevron-down' | 'chevron-right'
+  | 'forward' | 'close' | 'check' | 'checks' | 'chevron-down' | 'chevron-right'
   | 'alert' | 'info' | 'refresh' | 'wifi-off' | 'plus' | 'trash' | 'edit'
   | 'download' | 'star' | 'clock' | 'more' | 'expand' | 'collapse' | 'phone';
 
@@ -83,6 +84,7 @@ const MAP: Record<IconName, PhosphorIcon> = {
   forward: CaretRight,
   close: X,
   check: Check,
+  checks: Checks,
   'chevron-down': CaretDown,
   'chevron-right': CaretRight,
   alert: WarningCircle,

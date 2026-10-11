@@ -37,8 +37,9 @@ export function TopBar({
 }) {
   const t = useT();
   return (
-    <View className={cx('h-[44px] w-full flex-row items-center justify-between', className)}>
-      <View className="w-[40px] justify-center">
+    // box-none: in a floating header, only the buttons take touches; the rest scrolls what is underneath.
+    <View pointerEvents="box-none" className={cx('h-[44px] w-full flex-row items-center justify-between', className)}>
+      <View pointerEvents="box-none" className="w-[40px] justify-center">
         {menu ? (
           <DrawerToggle disabled={menuDisabled} />
         ) : onBack ? (
@@ -46,13 +47,14 @@ export function TopBar({
         ) : null}
       </View>
       {title ? (
-        <Text variant="title" center className="flex-1">
+        // One line, shrinking to fit: a long title must not run into the side buttons.
+        <Text variant="title" center numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} className="flex-1 px-sm">
           {title}
         </Text>
       ) : (
         <View className="flex-1" />
       )}
-      <View className="w-[40px] items-end">
+      <View pointerEvents="box-none" className="w-[40px] items-end">
         {action ? (
           <IconButton
             name={action}

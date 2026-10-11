@@ -1,4 +1,4 @@
-import * as Haptics from 'expo-haptics';
+import { haptic as haptics } from '../../lib/haptics';
 import { useCallback } from 'react';
 import { Pressable, StyleSheet, View, type PressableProps } from 'react-native';
 
@@ -23,7 +23,7 @@ type Common = {
 const useTap = (onPress: PressableProps['onPress'], haptic?: boolean) =>
   useCallback<NonNullable<PressableProps['onPress']>>(
     (e) => {
-      if (haptic) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (haptic) haptics.tap();
       onPress?.(e);
     },
     [onPress, haptic],

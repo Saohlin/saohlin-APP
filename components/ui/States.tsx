@@ -1,4 +1,5 @@
-import { ActivityIndicator, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { ActivityIndicator, Animated, Easing, View } from 'react-native';
 
 import { useT } from '../../i18n';
 import { useTheme } from '../../theme';
@@ -22,7 +23,7 @@ function Frame({
   compact,
   className,
 }: {
-  icon?: IconName;
+  icon?: IconName | null;
   title: string;
   message?: string;
   children?: React.ReactNode;
@@ -62,7 +63,8 @@ export function EmptyState({
   compact,
   className,
 }: {
-  icon?: IconName;
+  /** Pass `null` for no icon. */
+  icon?: IconName | null;
   title: string;
   message?: string;
   actionLabel?: string;
@@ -157,18 +159,65 @@ export function MaintenanceState({ until, className }: { until?: string; classNa
   );
 }
 
-/** Use only when the shape of the result is unknown; otherwise use a Skeleton. */
+const LAUNCH_LOGO = require('../../assets/brand/launch-logo.png');
+const LAUNCH_LOGO_ASPECT = 6052 / 1376;
+/** Same width as the native splash (`imageWidth` in app.json), so the hand-off doesn't jump. */
+const LAUNCH_LOGO_WIDTH = 190;
+const BREATH_MS = 1200;
+
+/** The launch logo, breathing: scales and fades gently until the wait is over. */
+function LogoLoader({ label }: { label: string }) {
+  const breath = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, { toValue: 1, duration: BREATH_MS, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(breath, { toValue: 0, duration: BREATH_MS, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [breath]);
+
+  return (
+    <View accessibilityRole="progressbar" accessibilityLabel={label} className="w-full flex-1 items-center justify-center">
+      <Animated.Image
+        source={LAUNCH_LOGO}
+        resizeMode="contain"
+        style={{
+          width: LAUNCH_LOGO_WIDTH,
+          height: LAUNCH_LOGO_WIDTH / LAUNCH_LOGO_ASPECT,
+          opacity: breath.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }),
+          transform: [{ scale: breath.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.04] }) }],
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * Use only when the shape of the result is unknown; otherwise use a Skeleton.
+ *
+ * A full-screen wait (session restore, auth hand-offs) shows the breathing
+ * logo. A wait inside a screen passes `spinner`, `compact` or a `label` and
+ * gets the small indicator instead.
+ */
 export function LoadingState({
   label,
   compact,
+  spinner,
   className,
 }: {
   label?: string;
   compact?: boolean;
+  /** Keep the small indicator even at full height, for waits inside a screen. */
+  spinner?: boolean;
   className?: string;
 }) {
   const { colors } = useTheme();
   const t = useT();
+  if (!label && !compact && !spinner) return <LogoLoader label={t('common.loading')} />;
   return (
     <View
       accessibilityRole="progressbar"

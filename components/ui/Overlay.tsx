@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import { useTheme } from '../../theme';
+import { fonts, useTheme } from '../../theme';
 import { LiquidButton } from './LiquidButton';
 import { SecondaryButton, IconButton } from './Button';
 import { Text } from './Text';
@@ -111,8 +111,11 @@ export function Dialog({
   onCancel,
   destructive,
   busy,
+  plainCancel,
   className,
 }: {
+  /** Cancel as bold text under the single button, instead of a second button. */
+  plainCancel?: boolean;
   visible: boolean;
   /** Tapping outside, or the system back button: always the harmless way out. */
   onClose: () => void;
@@ -128,7 +131,7 @@ export function Dialog({
   busy?: boolean;
   className?: string;
 }) {
-  const { shadow } = useTheme();
+  const { shadow, colors } = useTheme();
   const t = useT();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -162,19 +165,38 @@ export function Dialog({
                     'h-[52px] items-center justify-center rounded-pill bg-error-solid active:opacity-90',
                     busy && 'opacity-60',
                   )}>
-                  <Text variant="button" className="text-error-on">
+                  {/* Colour set inline: the variant's own ink class would otherwise win
+                     over a colour class, leaving dark text on the red button. */}
+                  <Text variant="button" style={{ color: colors.errorOn }}>
                     {confirmLabel}
                   </Text>
                 </Pressable>
               ) : (
                 <LiquidButton title={confirmLabel} onPress={onConfirm} loading={busy} />
               )}
-              <SecondaryButton
-                title={cancelLabel ?? t('common.cancel')}
-                onPress={onCancel ?? onClose}
-                disabled={busy}
-                haptic={false}
-              />
+              {plainCancel ? (
+                // One button only: the way out is a bold line of text under it.
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: !!busy }}
+                  disabled={busy}
+                  hitSlop={8}
+                  onPress={onCancel ?? onClose}
+                  // Tight to the button above, and pulled into the card's bottom padding so
+                  // the text does not float in a gap of its own.
+                  className={cx('-mb-xs items-center pt-xxs active:opacity-60', busy && 'opacity-45')}>
+                  <Text variant="bodyMedium" tone="secondary" style={{ fontFamily: fonts.bodySemibold }}>
+                    {cancelLabel ?? t('common.cancel')}
+                  </Text>
+                </Pressable>
+              ) : (
+                <SecondaryButton
+                  title={cancelLabel ?? t('common.cancel')}
+                  onPress={onCancel ?? onClose}
+                  disabled={busy}
+                  haptic={false}
+                />
+              )}
             </View>
           </View>
         </View>

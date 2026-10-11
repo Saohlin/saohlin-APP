@@ -1,3 +1,4 @@
+import { haptic } from '../../lib/haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -19,7 +20,9 @@ import { cx } from './cx';
 import { GLASS_EDGE, SHEEN, SHEEN_STOPS } from './glass';
 import { useT } from '../../i18n';
 
-const SEND_SIZE = 42;
+const SEND_SIZE = 38;
+/** How long the copy glyph stays a double tick after copying. */
+const COPIED_MS = 2000;
 
 /**
  * Composer geometry: a rounded pane with the message on its own full-width row
@@ -28,7 +31,7 @@ const SEND_SIZE = 42;
  */
 const COMPOSER_LINE = typeScale.chat.lineHeight ?? 21;
 /** Field's vertical padding (in the style object, not a class). */
-const COMPOSER_PAD = space.xxs;
+const COMPOSER_PAD = space.xs;
 /** Max lines before the field stops growing and scrolls. */
 const COMPOSER_MAX_LINES = 7;
 /** Lines before the expand control appears. */
@@ -91,6 +94,22 @@ export function ChatBubble({
   const t = useT();
   const { colors, gradients, shadow } = useTheme();
   const mine = sender === 'user';
+
+  // Copy confirms in place: the glyph becomes a double tick for a moment, with a
+  // haptic, instead of a message appearing elsewhere on the screen.
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+  }, []);
+  const copy = () => {
+    onCopy?.();
+    haptic.success();
+    setCopied(true);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopied(false), COPIED_MS);
+  };
+
   const who = mine ? (label?.trim() || t('chat.you')) : t('brand.ai');
   return (
     <View className={cx('w-full', mine ? 'items-end' : 'items-start', className)}>
@@ -150,10 +169,10 @@ export function ChatBubble({
                   variant="plain"
                   size={28}
                   iconSize={17}
-                  iconColor={colors.textSecondary}
-                  name="copy"
-                  label={t('chat.copy')}
-                  onPress={onCopy}
+                  iconColor={copied ? colors.accent : colors.textSecondary}
+                  name={copied ? 'checks' : 'copy'}
+                  label={t(copied ? 'chat.copied' : 'chat.copy')}
+                  onPress={copy}
                 />
               </View>
             ) : null}
@@ -247,6 +266,8 @@ export function ChatComposer({
   const [content, setContent] = useState(0);
   /** Measured height of one line on this platform. */
   const oneLine = useRef(0);
+  /** True when the platform's content height leaves out the field's padding. */
+  const barePadding = useRef(false);
   /** Opened by the expand control. */
   const [open, setOpen] = useState(false);
 
@@ -258,7 +279,8 @@ export function ChatComposer({
     }
   }, [value]);
 
-  const base = oneLine.current || COMPOSER_LINE + COMPOSER_PAD * 2;
+  // Never shorter than one padded line, whatever the platform measured.
+  const base = Math.max(oneLine.current, COMPOSER_LINE + COMPOSER_PAD * 2);
   /**
    * Fallback height from hard line breaks, for Android builds where
    * onContentSizeChange stops firing on a multiline field with an explicit height.
@@ -290,7 +312,7 @@ export function ChatComposer({
       className={cx(
         // Rounded rectangle (radius.card, same as the bubbles) with the same glass
         // treatment: lit top edge, violet shade at the bottom and a shadow.
-        'w-full overflow-hidden rounded-card bg-glass/glass px-md pb-xxs pt-xs',
+        'w-full overflow-hidden rounded-card bg-glass/glass px-md pb-xs pt-xs',
         disabled && 'opacity-60',
         className,
       )}>
@@ -323,7 +345,13 @@ export function ChatComposer({
         value={value}
         onChangeText={onChangeText}
         onContentSizeChange={(e) => {
-          const h = Math.ceil(e.nativeEvent.contentSize.height);
+          const raw = Math.ceil(e.nativeEvent.contentSize.height);
+          // Some platforms report the text alone, without the field's own padding.
+          // A one-line reading shorter than a padded line gives that away; from
+          // then on the padding is added back, or the box is too short and the
+          // placeholder is cut off.
+          if ((value.length === 0 || oneLine.current === 0) && raw < COMPOSER_LINE + COMPOSER_PAD * 2) barePadding.current = true;
+          const h = raw + (barePadding.current ? COMPOSER_PAD * 2 : 0);
           if (value.length === 0 || oneLine.current === 0) oneLine.current = h;
           setContent(h);
         }}
@@ -354,7 +382,7 @@ export function ChatComposer({
         <IconButton
           variant="accent"
           size={SEND_SIZE}
-          iconSize={17}
+          iconSize={16}
           name="send"
           label={t('chat.send')}
           onPress={onSend}

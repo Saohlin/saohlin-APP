@@ -55,6 +55,10 @@ export const cs = {
     lastNamePlaceholder: 'Napiš své příjmení…',
     emailPlaceholder: 'Napiš svůj email…',
     passwordPlaceholder: 'Vytvoř své heslo…',
+    currentPasswordPlaceholder: 'Napiš své heslo…',
+    signInSubtitle: 'Vítej zpět. Tvá cesta na tebe čeká.',
+    signUpSubtitle: 'Poslední krok, než tvá cesta začne.',
+    noAccount: 'Jsi tu poprvé?',
     forgotPassword: 'Zapomenuté heslo',
     resetPassword: 'Obnovit heslo',
     haveAccount: 'Už máš svůj účet?',
@@ -197,6 +201,10 @@ export const cs = {
     call: 'Zavolat',
     loadOlder: 'Načíst starší zprávy',
     untitled: 'Rozhovor ze dne {date}',
+    historyToday: 'Dnes',
+    historyYesterday: 'Včera',
+    historyWeek: 'Posledních 7 dní',
+    historyEarlier: 'Dříve',
     historyEmpty: 'Zatím žádné rozhovory',
   },
 
@@ -297,7 +305,7 @@ export const cs = {
     all: 'Vše',
     sharedOnly: 'Sdílené',
     dayFilter: 'Zápisy ze dne {date}',
-    searchPlaceholder: 'Hledat v deníku…',
+    searchPlaceholder: 'Hledej ve svém deníku…',
     searchHint: 'Napiš aspoň dva znaky.',
     searchEmptyTitle: 'Nic nenalezeno',
     searchEmptyMessage: 'Zkus jiné slovo nebo kratší výraz.',
@@ -336,6 +344,8 @@ export const cs = {
 
   profile: {
     title: 'Profil',
+    subtitle: 'Co o tobě vím a kde to můžeš změnit.',
+    more: 'Další',
     edit: 'Upravit profil',
     memory: 'Paměť',
     memoryTitle: 'Co si o mně CLAUDIA AI pamatuje',
@@ -348,8 +358,6 @@ export const cs = {
     forgetAllKeeps: 'Tvůj profil a odpovědi zůstanou.',
     memoryNotes: 'Co si pamatuju',
     memoryLoadFailed: 'Paměť se nepodařilo načíst.',
-    vocative: 'Jak tě oslovuju',
-    vocativeHint: 'Tvar tvého jména, kterým tě oslovuju, například Terezo.',
     aboutYou: 'O tobě',
     saved: 'Uloženo.',
     memoryIntro: 'Tohle o tobě CLAUDIA AI teď ví. Cokoli z toho můžeš změnit.',
@@ -369,6 +377,11 @@ export const cs = {
 
   settings: {
     title: 'Nastavení',
+    subtitle: 'Chování aplikace, tvoje data a tvůj účet.',
+    preferences: 'Předvolby',
+    privacy: 'Tvoje data',
+    voiceHint: 'Poslechni si odpovědi nahlas.',
+    hapticsHint: 'Jemná odezva při dotyku.',
     notifications: 'Oznámení',
     notificationsDenied: 'Oznámení máš vypnutá v nastavení telefonu.',
     voice: 'Přehrávání hlasem',
@@ -383,6 +396,12 @@ export const cs = {
 
   membership: {
     title: 'Členství',
+    statusActive: 'Aktivní členství',
+    // One word between asterisks is drawn bold and in the accent colour.
+    invite: 'Tvoje *cesta* tady nekončí.',
+    getStarted: 'Začít',
+    statusNone: 'Bez členství',
+    trialLeft: 'Zbývá odpovědí zdarma: {remaining} z {total}',
     activate: 'Aktivovat členství',
     manage: 'Spravovat členství',
     restore: 'Obnovit nákup',
@@ -390,12 +409,14 @@ export const cs = {
     renewsOn: 'Obnoví se {date}',
     cancel: 'Zrušit členství',
     // DRAFT: the free-allowance unit is not final.
-    paywallTitle: 'Pokračujme spolu',
+    paywallTitle: 'Pokračujme',
     paywallMessage: 'Tvůj výklad zdarma jsi využila. Členstvím získáš CLAUDIA AI naplno.',
     billingProblemTitle: 'Platba neproběhla',
     billingProblemMessage: 'Zkontroluj prosím způsob platby, ať o přístup nepřijdeš.',
     // DRAFT: membership benefits copy pending.
     noCommitment: 'Žádný závazek.',
+    includes: 'Co ti členství dává',
+    renewNote: 'Obnovuje se automaticky každý měsíc. Zrušit můžeš kdykoli.',
   },
 
   legal: {
