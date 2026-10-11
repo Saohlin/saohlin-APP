@@ -1,5 +1,6 @@
 import { useNavigation } from 'expo-router';
 import type { DrawerNavigationProp } from 'expo-router/drawer';
+import { Keyboard } from 'react-native';
 
 import { IconButton } from '../ui/Button';
 import { useT } from '../../i18n';
@@ -20,7 +21,12 @@ export function DrawerToggle({ disabled }: { disabled?: boolean }) {
       name="menu"
       label={t('a11y.menu')}
       disabled={disabled}
-      onPress={() => navigation.openDrawer()}
+      // Put the keyboard away first, so the drawer never opens with it still up.
+      // (A swipe-open already does this through the navigator's keyboardDismissMode.)
+      onPress={() => {
+        Keyboard.dismiss();
+        navigation.openDrawer();
+      }}
       className="self-start"
     />
   );

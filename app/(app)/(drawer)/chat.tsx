@@ -68,6 +68,10 @@ export default function Chat() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [toast, setToast] = useState<{ tone: Tone; message: string } | null>(null);
   const hideToast = useCallback(() => setToast(null), []);
+  /** For controls whose feature is not built yet (voice input, listening to a reply). */
+  const [soon, setSoon] = useState(false);
+  const inProgress = useCallback(() => setSoon(true), []);
+  const closeSoon = useCallback(() => setSoon(false), []);
   /** The message whose menu is open. */
   const [picked, setPicked] = useState<UiMessage | null>(null);
   const [thinkingLong, setThinkingLong] = useState(false);
@@ -215,7 +219,7 @@ export default function Chat() {
             onSend={onSend}
             sendDisabled={chat.busy}
             maxLength={MAX_MESSAGE_CHARS}
-            onMic={() => {}}
+            onMic={inProgress}
           />
         </View>
       }
@@ -245,7 +249,8 @@ export default function Chat() {
       <ScrollView
         ref={scroll}
         className="flex-1 px-gutter"
-        contentContainerClassName="gap-lg pb-md"
+        // Top padding keeps the first item off the header and the free-replies pill.
+        contentContainerClassName="gap-lg pt-sm pb-md"
         onScroll={onScroll}
         scrollEventThrottle={100}
         keyboardShouldPersistTaps="handled"
@@ -281,6 +286,7 @@ export default function Chat() {
             failedMessage={t(failureCopy(state.notice, !!m.id))}
             heldMessage={t('chat.held')}
             onCopy={copyQuietly}
+            onListen={inProgress}
             onMenu={setPicked}
             onOpenEntry={(id) => router.push({ pathname: '/journal/[id]', params: { id } })}
           />
@@ -304,6 +310,16 @@ export default function Chat() {
       <View className="px-gutter">
         <Toast visible={!!toast} tone={toast?.tone} message={toast?.message ?? ''} onHide={hideToast} />
       </View>
+
+      <Dialog
+        single
+        visible={soon}
+        onClose={closeSoon}
+        title={t('common.inProgressTitle')}
+        message={t('common.inProgress')}
+        confirmLabel={t('common.understood')}
+        onConfirm={closeSoon}
+      />
 
       <Sheet visible={!!picked} onClose={() => setPicked(null)} title={t('journal.messageActions')}>
         <ListRow
@@ -412,6 +428,7 @@ function MessageView({
   failedMessage,
   heldMessage,
   onCopy,
+  onListen,
   onMenu,
   onOpenEntry,
 }: {
@@ -422,6 +439,7 @@ function MessageView({
   failedMessage: string;
   heldMessage: string;
   onCopy: (text: string) => void;
+  onListen: () => void;
   onMenu: (m: UiMessage) => void;
   onOpenEntry: (id: string) => void;
 }) {
@@ -442,6 +460,7 @@ function MessageView({
         text={m.text}
         showActions={m.status === 'done'}
         onCopy={() => onCopy(m.text)}
+        onListen={onListen}
         onLongPress={menu}
       />
     );

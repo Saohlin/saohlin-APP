@@ -13,7 +13,10 @@
         "tinted": "./assets/ios-icon-tinted.png"
       },
       "supportsTablet": true,
-      "bundleIdentifier": "com.saohlin.app"
+      "bundleIdentifier": "com.saohlin.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -60,6 +63,7 @@
     "experiments": {
       "typedRoutes": true
     },
-    "backgroundColor": "#DCD5DA"
+    "backgroundColor": "#DCD5DA",
+    "owner": "saohlin.com"
   }
 }

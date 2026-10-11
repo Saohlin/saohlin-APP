@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { useSession } from '../../auth';
 import { MeshBackdrop } from '../../components/brand/MeshBackdrop';
 import {
   Banner,
+  Dialog,
   GlassCard,
   Icon,
   LiquidButton,
@@ -49,6 +51,9 @@ export default function Paywall() {
   const { entitlement } = useSession();
   const { colors } = useTheme();
   const router = useRouter();
+  // Purchases are not wired yet: the buttons say so instead of doing nothing.
+  const [notice, setNotice] = useState(false);
+  const hideNotice = useCallback(() => setNotice(false), []);
 
   return (
     // A modal is its own native sheet, so the root backdrop is not behind it.
@@ -62,7 +67,7 @@ export default function Paywall() {
         }
         footer={
           <View className="gap-xs pb-lg">
-            <LiquidButton title={t('membership.activate')} onPress={() => {}} />
+            <LiquidButton title={t('membership.activate')} onPress={() => setNotice(true)} />
             <Text variant="caption" tone="tertiary" center className="pt-xxs">
               {t('membership.renewNote')}
             </Text>
@@ -70,7 +75,7 @@ export default function Paywall() {
             <View className="flex-row items-center justify-center gap-xs">
               {(
                 [
-                  [t('membership.restore'), () => {}],
+                  [t('membership.restore'), () => setNotice(true)],
                   [t('legal.terms'), () => openLegal('terms')],
                   [t('legal.privacy'), () => openLegal('privacy')],
                 ] as const
@@ -161,6 +166,15 @@ export default function Paywall() {
           </View>
         </View>
       </Screen>
+      <Dialog
+        single
+        visible={notice}
+        onClose={hideNotice}
+        title={t('common.inProgressTitle')}
+        message={t('common.inProgress')}
+        confirmLabel={t('common.understood')}
+        onConfirm={hideNotice}
+      />
     </View>
   );
 }
