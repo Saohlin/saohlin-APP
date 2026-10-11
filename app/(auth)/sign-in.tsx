@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { useSession } from '../../auth';
-import { LiquidButton, Screen, TextButton, TextField, Title } from '../../components/ui';
+import { LiquidButton, Screen, Text, TextButton, TextField, Title } from '../../components/ui';
 import { useI18n } from '../../i18n';
 import { authErrorKey, isEmailNotConfirmed, looksLikeEmail } from '../../lib/authErrors';
 import { EMAIL_VERIFICATION_REQUIRED } from '../../lib/config';
@@ -45,38 +45,61 @@ export default function SignIn() {
   };
 
   return (
-    <Screen scroll avoidKeyboard footer={<LiquidButton title={t('auth.signIn')} loading={busy} onPress={submit} />}>
-      <Title center className="pt-xl">
-        {t('auth.signIn')}
-      </Title>
+    <Screen scroll avoidKeyboard>
+      {/* Header, form and CTA read as one group, centred on the screen. */}
+      <View className="flex-1 justify-center gap-xxl py-xl">
+        <View className="items-center gap-xs">
+          <Title center>{t('auth.signIn')}</Title>
+          <Text variant="lead" tone="secondary" center>
+            {t('auth.signInSubtitle')}
+          </Text>
+        </View>
 
-      <View className="flex-1 justify-center gap-xxl pt-xl">
-        <TextField
-          label={t('auth.email')}
-          placeholder={t('auth.emailPlaceholder')}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          textContentType="emailAddress"
-          autoComplete="email"
-          error={emailError}
-        />
-        <TextField
-          label={t('auth.password')}
-          value={password}
-          onChangeText={setPassword}
-          password
-          textContentType="password"
-          autoComplete="current-password"
-          error={error}
-        />
-        <TextButton
-          title={t('auth.forgotPassword')}
-          onPress={() => router.push({ pathname: '/forgot-password', params: { email } })}
-          className="self-end"
-        />
+        <View className="gap-lg">
+          <TextField
+            label={t('auth.email')}
+            placeholder={t('auth.emailPlaceholder')}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            textContentType="emailAddress"
+            autoComplete="email"
+            returnKeyType="next"
+            error={emailError}
+          />
+          {/* The reset link belongs to the password field, so it sits right under it. */}
+          <View className="gap-xxs">
+            <TextField
+              label={t('auth.password')}
+              placeholder={t('auth.currentPasswordPlaceholder')}
+              value={password}
+              onChangeText={setPassword}
+              password
+              textContentType="password"
+              autoComplete="current-password"
+              returnKeyType="go"
+              onSubmitEditing={submit}
+              error={error}
+            />
+            <TextButton
+              title={t('auth.forgotPassword')}
+              onPress={() => router.push({ pathname: '/forgot-password', params: { email } })}
+              className="self-end"
+            />
+          </View>
+        </View>
+
+        <View className="gap-sm">
+          <LiquidButton title={t('auth.signIn')} loading={busy} onPress={submit} />
+          <View className="flex-row items-center justify-center gap-xxs">
+            <Text variant="micro" tone="tertiary">
+              {t('auth.noAccount')}
+            </Text>
+            <TextButton title={t('auth.createAccount')} onPress={() => router.push('/profile-setup')} />
+          </View>
+        </View>
       </View>
     </Screen>
   );

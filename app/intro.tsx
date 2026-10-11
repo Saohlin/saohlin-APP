@@ -8,6 +8,7 @@ import { Image, View, type LayoutChangeEvent } from 'react-native';
 import { LiquidButton, ProgressBar, Screen, Text, TextButton } from '../components/ui';
 import { useI18n } from '../i18n';
 import { useTheme, withAlpha } from '../theme';
+import { HOME_FOR, useSession } from '../auth';
 
 const INTRO = require('../assets/video/intro.mp4');
 const POSTER = require('../assets/video/intro-poster.jpg');
@@ -35,6 +36,7 @@ export default function Intro() {
   const { t } = useI18n();
   const { colors, shadow } = useTheme();
   const router = useRouter();
+  const { status } = useSession();
   const [firstFrame, setFirstFrame] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [box, setBox] = useState({ width: 0, height: 0 });
@@ -50,8 +52,10 @@ export default function Intro() {
   const onward = useCallback(() => {
     if (left.current) return;
     left.current = true;
-    router.replace('/profile-setup');
-  }, [router]);
+    // Signed-in users continue from their own step, not from the profile form.
+    const home = status === 'guest' || status === 'restoring' ? null : HOME_FOR[status];
+    router.replace(home ?? '/profile-setup');
+  }, [router, status]);
 
   useEventListener(player, 'playToEnd', onward);
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {

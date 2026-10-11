@@ -1,8 +1,8 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
-import { czechVocative, useSession, zodiacFor, type Gender } from '../auth';
+import { useSession, zodiacFor, type Gender } from '../auth';
 import {
   Banner,
   DateField,
@@ -11,15 +11,16 @@ import {
   Screen,
   SelectField,
   Sheet,
-  StepDots,
   Text,
   TextField,
   Title,
   useDatePicker,
+  useKeyboardVisible,
 } from '../components/ui';
 import { useI18n } from '../i18n';
 import { authErrorKey } from '../lib/authErrors';
 import { MIN_AGE } from '../lib/config';
+import { openLegal } from '../lib/legal';
 import type { Dictionary, Path } from '../i18n';
 
 /**
@@ -62,8 +63,9 @@ const dobLatest = () => {
 
 export default function ProfileSetup() {
   const { t } = useI18n();
-  const { session, grantConsent, saveProfile } = useSession();
+  const { session, status, grantConsent, saveProfile } = useSession();
   const router = useRouter();
+  const keyboardUp = useKeyboardVisible();
   const [displayName, setDisplayName] = useState('');
   const [dob, setDob] = useState<string>();
   const [gender, setGender] = useState<Gender>();
@@ -103,7 +105,8 @@ export default function ProfileSetup() {
       await grantConsent();
       await saveProfile({
         displayName: name,
-        vocative: czechVocative(name),
+        // The name is used exactly as typed; no Czech vocative is derived from it.
+        vocative: name,
         dateOfBirth: dob,
         gender,
         zodiac: zodiacFor(dob),
@@ -118,28 +121,50 @@ export default function ProfileSetup() {
     }
   };
 
+  // This screen sits outside the guarded groups, so it routes itself: once the
+  // profile is saved (or was already), move on instead of showing the form again.
+  if (status === 'needsDeeper') return <Redirect href="/deeper" />;
+  if (status === 'ready') return <Redirect href="/chat" />;
+
   return (
     <Screen
       scroll
       footer={
-        <View className="pb-xxl">
+        // The deep bottom padding is for the resting layout; above the keyboard it
+        // would only take room from the form.
+        <View className={keyboardUp ? 'pb-xs' : 'pb-xxl'}>
           {error ? <Banner tone="warning" message={error} className="mb-md" /> : null}
           <LiquidButton title={t('common.continue')} loading={busy} onPress={commit} />
-          <Text variant="micro" tone="tertiary" center className="pt-md">
-            {t('onboarding.consentPrefix')}{' '}
-            <Text variant="micro" tone="tertiary" className="underline" onPress={() => router.push('/legal/terms')}>
-              {t('onboarding.consentTerms')}
-            </Text>{' '}
-            {t('onboarding.consentAnd')}{' '}
-            <Text variant="micro" tone="tertiary" className="underline" onPress={() => router.push('/legal/privacy')}>
-              {t('onboarding.consentPrivacy')}
-            </Text>
-          </Text>
+          {/* Links are their own Pressables: nested Text presses were not registering,
+             and a 10 pt run of text is too small a target without hitSlop. */}
+          {/* One wrapping row, split into words, so the sentence fills the first line
+             before it breaks, the way a single paragraph would. */}
+          <View className="pt-md">
+            <View className="flex-row flex-wrap items-center justify-center gap-x-xxs">
+              {t('onboarding.consentPrefix')
+                .split(' ')
+                .map((word, i) => (
+                  <Text key={i} variant="micro" tone="tertiary">
+                    {word}
+                  </Text>
+                ))}
+              <Pressable accessibilityRole="link" hitSlop={12} onPress={() => openLegal('terms')} className="py-xxs active:opacity-60">
+                <Text variant="micro" tone="tertiary" className="underline">
+                  {t('onboarding.consentTerms')}
+                </Text>
+              </Pressable>
+              <Text variant="micro" tone="tertiary">
+                {t('onboarding.consentAnd')}
+              </Text>
+              <Pressable accessibilityRole="link" hitSlop={12} onPress={() => openLegal('privacy')} className="py-xxs active:opacity-60">
+                <Text variant="micro" tone="tertiary" className="underline">
+                  {t('onboarding.consentPrivacy')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
       }>
-      {/* Four dots for the four onboarding steps. */}
-      <StepDots total={4} current={0} className="pt-lg" />
-
       <Title className="pt-xxl">{t('onboarding.profileTitle')}</Title>
       <Text variant="caption" className="pt-lg">
         {t('onboarding.profileSubtitle')}

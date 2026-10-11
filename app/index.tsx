@@ -1,4 +1,4 @@
-import * as Haptics from 'expo-haptics';
+import { haptic } from '../lib/haptics';
 import { useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
@@ -6,7 +6,7 @@ import { Image, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { mesh } from '../theme';
 
-import { useSession } from '../auth';
+import { HOME_FOR, useSession } from '../auth';
 import { ResetSession } from '../components/dev/ResetSession';
 import { LiquidButton, Text } from '../components/ui';
 import { useI18n } from '../i18n';
@@ -20,6 +20,9 @@ const POSTER = require('../assets/video/splash-poster.png');
  */
 const IGNITION_MS = 1730;
 const FLARE_MS = 2470;
+
+/** Where first-launch playback starts. Haptics earlier than this are skipped. */
+const FIRST_SEEK_S = 1;
 
 /** Where a returning user's playback starts, so the brand never holds them. */
 const RETURNING_SEEK_S = 2.8;
@@ -41,7 +44,7 @@ export default function Entry() {
     p.loop = false;
     p.muted = returning;
     p.timeUpdateEventInterval = 0;
-    if (returning) p.currentTime = RETURNING_SEEK_S;
+    p.currentTime = returning ? RETURNING_SEEK_S : FIRST_SEEK_S;
     p.play();
   });
 
@@ -49,14 +52,16 @@ export default function Entry() {
 
   useEffect(() => {
     if (returning) return;
-    timers.current = [
-      setTimeout(() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      }, IGNITION_MS),
-      setTimeout(() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-      }, FLARE_MS),
+    // Haptics are timed against the video, so they shift with the start point
+    // and any that fall before it are dropped.
+    const cues: [number, () => void][] = [
+      [IGNITION_MS, haptic.tap],
+      [FLARE_MS, haptic.thump],
     ];
+    timers.current = cues
+      .map(([at, fire]) => [at - FIRST_SEEK_S * 1000, fire] as const)
+      .filter(([delay]) => delay >= 0)
+      .map(([delay, fire]) => setTimeout(fire, delay));
     return () => {
       timers.current.forEach(clearTimeout);
       timers.current = [];
@@ -64,8 +69,11 @@ export default function Entry() {
   }, [returning]);
 
   const enter = () => {
-    // Anyone who hasn't finished onboarding goes to the intro video.
-    if (status === 'ready') router.replace('/chat');
+    // New visitors get the intro video. Anyone with an account resumes at the
+    // step they left (verification, profile, the four questions, or the chat),
+    // so closing the app mid-onboarding never restarts it from the first screen.
+    const home = status === 'guest' || status === 'restoring' ? null : HOME_FOR[status];
+    if (home) router.replace(home);
     else router.push('/intro');
   };
 

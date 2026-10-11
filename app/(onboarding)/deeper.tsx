@@ -22,22 +22,16 @@ import type { Dictionary, Path } from '../../i18n';
 /**
  * Onboarding part 2: four questions (work, current situation, what holds you
  * back, visions). Sensitive answers, collected after consent and sign-up.
- * Only "Next" advances the sequence. Where a step has a `prompt`, it's shown
- * above the field so it stays visible while typing. The glass card is the input.
+ * Only "Next" advances the sequence. All four steps are laid out identically:
+ * step counter, title, then the entry area with its placeholder. The glass card
+ * is the input.
  */
 const STEPS: Array<{
   key: keyof DeeperAnswers;
   title: Path<Dictionary>;
   placeholder: Path<Dictionary>;
-  /** Prompt shown above the entry area and kept while typing. */
-  prompt?: Path<Dictionary>;
 }> = [
-  {
-    key: 'work',
-    title: 'onboarding.work',
-    placeholder: 'onboarding.workPlaceholder',
-    prompt: 'onboarding.workPrompt',
-  },
+  { key: 'work', title: 'onboarding.work', placeholder: 'onboarding.workPlaceholder' },
   { key: 'situation', title: 'onboarding.situation', placeholder: 'onboarding.situationPlaceholder' },
   { key: 'blocking', title: 'onboarding.blocking', placeholder: 'onboarding.blockingPlaceholder' },
   { key: 'visions', title: 'onboarding.visions', placeholder: 'onboarding.visionsPlaceholder' },
@@ -55,7 +49,6 @@ export default function Deeper() {
   const [error, setError] = useState<string>();
 
   const last = step === STEPS.length - 1;
-  const prompt = STEPS[step].prompt;
   /**
    * Entry area height, the same on every step (about 27% of screen height), so
    * the box doesn't change size between questions.
@@ -117,11 +110,6 @@ export default function Deeper() {
         <Text variant="title" center className="pt-sm">
           {t(STEPS[step].title)}
         </Text>
-        {prompt ? (
-          <Text variant="body" className="pt-md">
-            {t(prompt)}
-          </Text>
-        ) : null}
         {/* Fixed height (not minHeight) so the box doesn't grow while typing; text scrolls inside. */}
         <View className="pt-md" style={{ height: entry }}>
           <TextArea
@@ -129,7 +117,7 @@ export default function Deeper() {
             grow
             value={answers[step]}
             onChangeText={setAnswer}
-            placeholder={prompt ? undefined : t(STEPS[step].placeholder)}
+            placeholder={t(STEPS[step].placeholder)}
           />
         </View>
       </GlassCard>

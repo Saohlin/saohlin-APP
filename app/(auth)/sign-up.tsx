@@ -24,6 +24,18 @@ export default function SignUp() {
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
 
+  // The password rules stay hidden until a password fails them: on leaving the
+  // field or on submit. They clear as soon as what is typed meets the policy.
+  const checkPassword = () => {
+    if (password && !passwordMeetsPolicy(password)) {
+      setErrors((e) => ({ ...e, password: t('validation.passwordShort') }));
+    }
+  };
+  const onPasswordChange = (v: string) => {
+    setPassword(v);
+    if (errors.password && passwordMeetsPolicy(v)) setErrors((e) => ({ ...e, password: undefined }));
+  };
+
   const submit = async () => {
     const next: Partial<Record<Field, string>> = {};
     if (!looksLikeEmail(email)) next.email = t('validation.emailInvalid');
@@ -49,10 +61,45 @@ export default function SignUp() {
   };
 
   return (
-    <Screen
-      scroll
-      avoidKeyboard
-      footer={
+    <Screen scroll avoidKeyboard>
+      {/* Same shape as sign-in: header, form and CTA as one group, centred on the screen. */}
+      <View className="flex-1 justify-center gap-xxl py-xl">
+        <View className="items-center gap-xs">
+          <Title center>{t('auth.createAccount')}</Title>
+          <Text variant="lead" tone="secondary" center>
+            {t('auth.signUpSubtitle')}
+          </Text>
+        </View>
+
+        <View className="gap-lg">
+          <TextField
+            label={t('auth.email')}
+            placeholder={t('auth.emailPlaceholder')}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            textContentType="emailAddress"
+            autoComplete="email"
+            returnKeyType="next"
+            error={errors.email}
+          />
+          <TextField
+            label={t('auth.password')}
+            placeholder={t('auth.passwordPlaceholder')}
+            value={password}
+            onChangeText={onPasswordChange}
+            onBlur={checkPassword}
+            password
+            textContentType="newPassword"
+            autoComplete="new-password"
+            returnKeyType="go"
+            onSubmitEditing={submit}
+            error={errors.password}
+          />
+        </View>
+
         <View className="gap-sm">
           <LiquidButton title={t('auth.signUp')} loading={busy} onPress={submit} />
           <View className="flex-row items-center justify-center gap-xxs">
@@ -62,35 +109,6 @@ export default function SignUp() {
             <TextButton title={t('auth.signIn')} onPress={() => router.push('/sign-in')} />
           </View>
         </View>
-      }>
-      <Title center className="pt-xl">
-        {t('auth.createAccount')}
-      </Title>
-
-      <View className="flex-1 justify-center gap-xxl pt-xl">
-        <TextField
-          label={t('auth.email')}
-          placeholder={t('auth.emailPlaceholder')}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          textContentType="emailAddress"
-          autoComplete="email"
-          error={errors.email}
-        />
-        <TextField
-          label={t('auth.password')}
-          placeholder={t('auth.passwordPlaceholder')}
-          value={password}
-          onChangeText={setPassword}
-          password
-          textContentType="newPassword"
-          autoComplete="new-password"
-          hint={t('auth.passwordHint')}
-          error={errors.password}
-        />
       </View>
     </Screen>
   );

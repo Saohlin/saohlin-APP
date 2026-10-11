@@ -5,13 +5,13 @@ import { View } from 'react-native';
 import { HOME_FOR, useSession } from '../auth';
 import {
   Banner,
-  EmptyState,
+  CodeField,
   LiquidButton,
   LoadingState,
   Screen,
-  SecondaryButton,
+  Text,
   TextButton,
-  TextField,
+  Title,
 } from '../components/ui';
 import { useI18n } from '../i18n';
 import { authErrorKey } from '../lib/authErrors';
@@ -95,41 +95,42 @@ export default function VerifyEmail() {
 
   return (
     <Screen scroll avoidKeyboard>
-      <View className="flex-1 justify-center">
-        <EmptyState
-          icon="mail"
-          title={t('auth.verifyEmail')}
-          message={t('auth.verifyEmailMessage', { email: pendingEmail ?? '' })}
-        />
-        <TextField
-          label={t('auth.verifyCode')}
-          placeholder={t('auth.verifyCodePlaceholder')}
-          value={code}
-          onChangeText={onCodeChange}
-          keyboardType="number-pad"
-          textContentType="oneTimeCode"
-          autoComplete="one-time-code"
-          maxLength={EMAIL_CODE_LENGTH}
-          error={codeError}
-          className="mt-lg"
-        />
-        {notice ? <Banner tone={notice.tone} message={notice.message} className="mt-lg" /> : null}
-      </View>
+      {/* Same shape as sign-in: header, code and CTA as one group, centred on the screen. */}
+      <View className="flex-1 justify-center gap-xxl py-xl">
+        <View className="items-center gap-xs">
+          <Title center>{t('auth.verifyEmail')}</Title>
+          <Text variant="lead" tone="secondary" center>
+            {t('auth.verifyEmailMessage', { email: pendingEmail ?? '' })}
+          </Text>
+        </View>
 
-      <View className="gap-md pb-lg">
-        <LiquidButton title={t('auth.verifyConfirm')} loading={busy} onPress={() => confirm()} />
-        <SecondaryButton
-          title={cooldown > 0 ? t('auth.resendIn', { seconds: String(cooldown) }) : t('auth.resend')}
-          icon="mail"
-          disabled={cooldown > 0}
-          onPress={resend}
-        />
-        <TextButton
-          title={t('auth.alreadyConfirmed')}
-          className="self-center"
-          onPress={() => router.push({ pathname: '/sign-in', params: { email: pendingEmail ?? '' } })}
-        />
-        <TextButton title={t('auth.useAnotherEmail')} tone="secondary" className="self-center" onPress={useAnotherEmail} />
+        <View className="gap-md">
+          <CodeField
+            label={t('auth.verifyCode')}
+            value={code}
+            onChangeText={onCodeChange}
+            length={EMAIL_CODE_LENGTH}
+            error={codeError}
+            disabled={busy}
+            autoFocus
+          />
+          {/* Resend is a quiet line under the code: a countdown first, then a link. */}
+          <View className="items-center">
+            {cooldown > 0 ? (
+              <Text variant="micro" tone="tertiary" className="py-xs">
+                {t('auth.resendIn', { seconds: String(cooldown) })}
+              </Text>
+            ) : (
+              <TextButton title={t('auth.resend')} icon="mail" className="self-center" onPress={resend} />
+            )}
+          </View>
+          {notice ? <Banner tone={notice.tone} message={notice.message} /> : null}
+        </View>
+
+        <View className="gap-sm">
+          <LiquidButton title={t('auth.verifyConfirm')} loading={busy} onPress={() => confirm()} />
+          <TextButton title={t('auth.useAnotherEmail')} tone="secondary" className="self-center" onPress={useAnotherEmail} />
+        </View>
       </View>
     </Screen>
   );
