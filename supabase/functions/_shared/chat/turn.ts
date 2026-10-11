@@ -193,7 +193,8 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
     const profile = ctx.profile ?? {};
     const gender = genderOf(profile.gender);
     const person: Person = {
-      name: profile.displayName ?? null, vocative: profile.vocative ?? null, gender, zodiac: profile.zodiac ?? null,
+      // §19.4: addressed by the typed name; a vocative stored by an older build is ignored.
+      name: profile.displayName ?? null, vocative: profile.displayName ?? null, gender, zodiac: profile.zodiac ?? null,
       context: ctx.context ?? {}, notes: ctx.notes ?? [], summary: ctx.summary ?? null,
       recentConversations: ctx.recentConversations ?? [],
     };
@@ -347,7 +348,7 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
         hardFailures.push(...first.map((f) => f.rule));
         retried = true;
         gate.failed = [];
-        const cont = continuationMessages(messages, gate.text, first, { vocativeForm: person.vocative, gender });
+        const cont = continuationMessages(messages, gate.text, first, { vocativeForm: person.vocative, gender, asTyped: true });
         if (await attempt(cont, "retry")) hardFailures.push(...gate.failed.map((f) => f.rule));
       }
     } catch (e) {

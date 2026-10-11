@@ -90,6 +90,21 @@ export interface GateContext {
   allowedVerbatim?: string[];
 }
 
+/**
+ * No dashes in a reply, ever. The prompt asks for this, and this makes it
+ * certain: an em dash (or a spaced en dash used the same way) becomes a comma
+ * before the sentence is checked, stored or shown. An unspaced en dash is a
+ * range ("5–10") and is left alone.
+ */
+export function dedash(s: string): string {
+  if (!/[—―–]/u.test(s)) return s;
+  return s
+    .replace(/[ \t]*[—―][ \t]*/gu, ", ")
+    .replace(/[ \t]+–[ \t]+/gu, ", ")
+    .replace(/^(\s*), /u, "$1") // the sentence opened with the dash
+    .replace(/,\s*([,.!?;:…])/gu, "$1"); // the dash sat next to other punctuation
+}
+
 export class SentenceGate {
   private released = "";
   private buffer = "";
@@ -113,7 +128,7 @@ export class SentenceGate {
     for (;;) {
       const e = sentenceEnd(this.buffer);
       if (e === -1) break;
-      const s = this.buffer.slice(0, e);
+      const s = dedash(this.buffer.slice(0, e));
       const verdict = this.check(s);
       if (verdict.length) {
         this.failed = verdict;
@@ -129,7 +144,7 @@ export class SentenceGate {
 
   /** End of stream: check and release whatever is left (a last sentence without punctuation). */
   flush(): { release: string[]; stop: boolean } {
-    const s = this.buffer;
+    const s = dedash(this.buffer);
     this.buffer = "";
     if (!strip(s)) return { release: [], stop: false };
     const verdict = this.check(s);
@@ -185,9 +200,13 @@ export function finalChecks(
  * stage8_chat.corrective_retry, phrased as a continuation because the good
  * part of the reply is already on screen.
  */
-export function correctiveAsks(failures: Failure[], opts: { vocativeForm: string | null; gender: "f" | "m" | null }): string[] {
+export function correctiveAsks(failures: Failure[], opts: { vocativeForm: string | null; gender: "f" | "m" | null; asTyped?: boolean }): string[] {
   const asks: string[] = [];
-  if (opts.vocativeForm) asks.push(`Oslov mě jménem ve 5. pádě: ${opts.vocativeForm}.`);
+  if (opts.vocativeForm) {
+    asks.push(opts.asTyped
+      ? `Oslov mě jménem přesně v tomto tvaru: ${opts.vocativeForm}. Jméno neskloňuj.`
+      : `Oslov mě jménem ve 5. pádě: ${opts.vocativeForm}.`);
+  }
   for (const h of failures) {
     switch (h.rule) {
       case "forbidden_ezo": asks.push(`Nepoužívej výraz „${h.found}“ – místo toho: ${h.use_instead}`); break;
@@ -211,7 +230,7 @@ export function correctiveAsks(failures: Failure[], opts: { vocativeForm: string
 /** Messages for the continuation after a failed sentence. */
 export function continuationMessages(
   messages: { role: string; content: string }[], goodSoFar: string, failed: Failure[],
-  opts: { vocativeForm: string | null; gender: "f" | "m" | null },
+  opts: { vocativeForm: string | null; gender: "f" | "m" | null; asTyped?: boolean },
 ): { role: string; content: string }[] {
   const asks = correctiveAsks(failed, opts);
   const out = [...messages];

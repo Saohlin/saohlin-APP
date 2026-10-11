@@ -173,10 +173,10 @@ Deno.test({ name: "a turn end to end: accepted, sentences, done, stored with met
     eq(calls.map((c: any) => c.purpose), ["crisis", "embedding", "planner", "reply"]);
     eq(await statusOf(acc.userMessageId), "complete");
 
-    // the prompt: persona first, the stored vocative, her exemplars, the message last
+    // the prompt: persona first, the name as typed (not the stored vocative), her exemplars, the message last
     const sent = r.ai.calls.find((c) => c.kind === "reply")!.messages!;
     ok(sent[0].content.startsWith("Jsi CLAUDIA AI. Odpovídáš výhradně česky.\n\n=== STYLOVÁ KARTA (jak píšeš) ==="));
-    ok(sent.at(-2)!.content.includes("Oslov ji jménem v 5. pádě: Evo. Nepoužívej 1. pád (Eva). Tykej."));
+    ok(sent.at(-2)!.content.includes("Oslov ji jménem přesně v tomto tvaru: Eva. Jméno neskloňuj a neměň jeho koncovku. Tykej."));
     ok(sent.at(-2)!.content.includes("Uživatelka je žena."));
     eq(sent.at(-1), { role: "user", content: "Rozešel se se mnou přítel a pořád čekám, jestli se mi ozve." });
   } finally { await teardown(); }

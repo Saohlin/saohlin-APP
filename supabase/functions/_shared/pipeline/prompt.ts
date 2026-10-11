@@ -323,6 +323,10 @@ export function buildMessages(args: {
   const useExemplars = args.useExemplars ?? true;
   const name = person.name;
   const voc = person.vocative ?? "";
+  // BUILD_SPEC §19.4: the user is addressed by the name exactly as typed. With
+  // no separate stored form, the model must be told not to decline the name,
+  // or it produces the Czech vocative by itself (Eva -> Evo).
+  const asTyped = !!name && (!voc || voc === name);
 
   const [nKnow, nRules, nVideo] = retrievalSizes(plan);
   const always = lib.alwaysRules();
@@ -432,7 +436,9 @@ export function buildMessages(args: {
   sys.push(
     "",
     "=== JAK ODPOVÍDAT ===",
-    name ? `Uživatelku oslovuj jménem ve 5. pádě: ${voc}.` : "Uživatele oslovuj jménem ve 5. pádě, pokud ho znáš.",
+    !name ? "Uživatele oslovuj jménem ve 5. pádě, pokud ho znáš."
+      : asTyped ? `Uživatelku oslovuj jménem přesně tak, jak ho zadala: ${name}. Jméno neskloňuj.`
+      : `Uživatelku oslovuj jménem ve 5. pádě: ${voc}.`,
     "Tykej.",
     "CO JE JEJÍ, TO SI NIKDY NEVYMÝŠLÍŠ: významy 23 průvodců, názvy a " +
       "kroky technik, protokol, její rámce a její pojmy. Tohle ber výhradně " +
@@ -473,10 +479,13 @@ export function buildMessages(args: {
   for (const turn of history) messages.push({ role: turn.role, content: turn.content });
 
   const tail: string[] = [];
+  tail.push("Nepoužívej pomlčky (— ani –). Místo pomlčky napiš čárku, nebo začni novou větu.");
   if (name) {
     const g = person.gender;
     const who = g !== "m" ? "ji" : "ho";
-    tail.push(`Oslov ${who} jménem v 5. pádě: ${voc}. Nepoužívej 1. pád (${name}). Tykej.`);
+    tail.push(asTyped
+      ? `Oslov ${who} jménem přesně v tomto tvaru: ${name}. Jméno neskloňuj a neměň jeho koncovku. Tykej.`
+      : `Oslov ${who} jménem v 5. pádě: ${voc}. Nepoužívej 1. pád (${name}). Tykej.`);
     if (g === "m") {
       tail.push("Uživatel je muž. Používej mužské tvary přídavných jmen a minulého času: byl jsi, trpělivý, laskavý.");
     } else if (g === "f") {
