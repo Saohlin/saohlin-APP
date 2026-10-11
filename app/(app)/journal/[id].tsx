@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -9,13 +10,12 @@ import {
   Dialog,
   Icon,
   ListRow,
-  LiquidButton,
   Screen,
-  SecondaryButton,
   Sheet,
   Text,
   TopBar,
   type Tone,
+  useHeaderInset,
 } from '../../../components/ui';
 import { useI18n, type Dictionary, type Path } from '../../../i18n';
 import {
@@ -38,7 +38,7 @@ import {
 } from '../../../lib/journal/copy';
 import { SHARE_MAX_CHARS, displayDay, displayTime, toSummary } from '../../../lib/journal/format';
 import { journalStore, useJournalStore } from '../../../lib/journal/store';
-import { useTheme } from '../../../theme';
+import { space, useTheme, withAlpha } from '../../../theme';
 
 type Notice = { tone: Tone; title?: string; text: Path<Dictionary>; action?: 'paywall' | 'settings' };
 type Asking = 'share' | 'unshare' | 'delete' | null;
@@ -48,6 +48,9 @@ const noticeForShare = (n: ShareNotice): Notice => ({
   text: shareNoticeCopy(n),
   action: n === 'PAYWALL' ? 'paywall' : n === 'AI_PAUSED' ? 'settings' : undefined,
 });
+
+/** Height of the soft wash at the bottom edge of an open entry. */
+const EDGE_FADE = space.xxl * 2 + space.lg;
 
 /**
  * One entry, to read. From here it can be edited, shared with CLAUDIA AI (or
@@ -60,7 +63,8 @@ const noticeForShare = (n: ShareNotice): Notice => ({
 export default function JournalEntry() {
   const { t, formatNumber } = useI18n();
   const router = useRouter();
-  const { colors } = useTheme();
+  const headerInset = useHeaderInset();
+  const { colors, mesh } = useTheme();
   const { session } = useSession();
   const { flash } = useJournalStore(session?.userId ?? null);
   const params = useLocalSearchParams<{ id: string; notice?: string }>();
@@ -191,8 +195,7 @@ export default function JournalEntry() {
 
   if (!entry) {
     return (
-      <Screen>
-        <TopBar onBack={leave} />
+      <Screen header={<TopBar onBack={leave} />}>
         {fault ? (
           <JournalFault kind={fault} onRetry={() => void load()} onBack={leave} />
         ) : (
@@ -208,22 +211,11 @@ export default function JournalEntry() {
   return (
     <Screen
       padded={false}
-      footer={
-        <View className="gap-xs px-gutter pb-lg">
-          {shared ? (
-            <LiquidButton title={t('journal.openConversation')} loading={busy && !asking} onPress={() => void share()} />
-          ) : (
-            <LiquidButton title={t('journal.shareWithAi')} onPress={() => setAsking('share')} />
-          )}
-          <SecondaryButton
-            title={t('journal.editEntry')}
-            icon="edit"
-            disabled={busy}
-            onPress={() => router.push({ pathname: '/journal/edit/[id]', params: { id: entry.id } })}
-          />
-        </View>
-      }>
-      <View className="px-gutter">
+      // No bottom inset: the entry runs to the very edge of the screen, and the
+      // list's own padding lets the last line scroll clear of the home indicator.
+      edges={['top']}
+      headerInset={false}
+      header={
         <TopBar
           onBack={leave}
           action="more"
@@ -231,9 +223,11 @@ export default function JournalEntry() {
           actionLabel={t('a11y.more')}
           onActionPress={() => setMenu(true)}
         />
-      </View>
-
-      <ScrollView className="flex-1 px-gutter" contentContainerClassName="gap-sm pb-lg pt-xs">
+      }>
+      <ScrollView
+        className="flex-1 px-gutter"
+        contentContainerClassName="gap-sm pb-xxl"
+        contentContainerStyle={{ paddingTop: headerInset }}>
         <View className="gap-xxs">
           <Text variant="label" tone="tertiary">
             {displayDay(entry.entryDate)} · {displayTime(entry.createdAt)}
@@ -285,6 +279,16 @@ export default function JournalEntry() {
         </Text>
       </ScrollView>
 
+      {/* The pinned header already veils the top. This is its match at the bottom:
+         the text fades out as it reaches the edge instead of being cut off. */}
+      <LinearGradient
+        pointerEvents="none"
+        // Eased, so the wash builds gradually and no upper edge shows.
+        colors={[0, 0.07, 0.25, 0.55, 0.8, 0.9].map((a) => withAlpha(mesh.base, a)) as [string, string, ...string[]]}
+        locations={[0, 0.2, 0.45, 0.7, 0.9, 1]}
+        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: EDGE_FADE }}
+      />
+
       <Sheet visible={menu} onClose={() => setMenu(false)} title={t('journal.entryActions')}>
         <ListRow
           icon="edit"
@@ -305,7 +309,19 @@ export default function JournalEntry() {
           }}
         />
         {shared ? (
-          <ListRow icon="lock" title={t('journal.unshare')} showChevron={false} onPress={() => ask('unshare')} />
+          <>
+            {/* The way back to the conversation, now that the screen has no bottom buttons. */}
+            <ListRow
+              icon="chat"
+              title={t('journal.openConversation')}
+              showChevron={false}
+              onPress={() => {
+                setMenu(false);
+                void share();
+              }}
+            />
+            <ListRow icon="lock" title={t('journal.unshare')} showChevron={false} onPress={() => ask('unshare')} />
+          </>
         ) : (
           <ListRow icon="chat" title={t('journal.shareWithAi')} showChevron={false} onPress={() => ask('share')} />
         )}
@@ -329,6 +345,7 @@ export default function JournalEntry() {
         }
         confirmLabel={t('journal.shareConfirm')}
         onConfirm={() => void share()}
+        plainCancel
         busy={busy}
       />
       <Dialog
@@ -348,6 +365,7 @@ export default function JournalEntry() {
         confirmLabel={t('journal.deleteEntry')}
         onConfirm={() => void remove()}
         destructive
+        plainCancel
         busy={busy}
       />
 

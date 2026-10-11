@@ -33,8 +33,7 @@ export default function GuideDetail() {
 
   if (!guide) {
     return (
-      <Screen>
-        <TopBar onBack={() => router.back()} />
+      <Screen header={<TopBar onBack={() => router.back()} />}>
         <View className="flex-1 items-center justify-center">
           <Text variant="caption" tone="tertiary">
             {t('cards.guide')}
@@ -48,14 +47,15 @@ export default function GuideDetail() {
     <Screen
       footer={
         <LiquidButton title={t('cards.wantReading')} onPress={() => router.push('/chat')} />
+      }
+      header={
+        <TopBar
+          onBack={() => router.back()}
+          action="bookmark"
+          actionLabel={t('cards.library')}
+          onActionPress={() => setSaved((s) => !s)}
+        />
       }>
-      <TopBar
-        onBack={() => router.back()}
-        action="bookmark"
-        actionLabel={t('cards.library')}
-        onActionPress={() => setSaved((s) => !s)}
-      />
-
       <View className="flex-row pt-xl">
         <GuideCard source={guide.art} name={guide.name} width={ART_WIDTH} />
 

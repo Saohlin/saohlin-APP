@@ -249,7 +249,8 @@ export function EntryEditor({ entryId, day }: { entryId?: string; day?: string }
       finished.current = true;
       await clearDraft(userId, slot);
       const wantsShare = !editing && share;
-      journalStore.saved(toSummary(res.entry), !editing, wantsShare ? null : 'saved');
+      // No "saved" toast: landing back on the list with the entry in it is the confirmation.
+      journalStore.saved(toSummary(res.entry), !editing, null);
       if (wantsShare) {
         await shareSaved(res.entry);
         return;
@@ -313,8 +314,7 @@ export function EntryEditor({ entryId, day }: { entryId?: string; day?: string }
 
   if (!ready) {
     return (
-      <Screen>
-        <TopBar onBack={leave} />
+      <Screen header={<TopBar onBack={leave} />}>
         <Text variant="title" center className="pt-xs">
           {title}
         </Text>
@@ -341,9 +341,8 @@ export function EntryEditor({ entryId, day }: { entryId?: string; day?: string }
           disabled={editing && !dirty}
           onPress={() => void save()}
         />
-      }>
-      <TopBar onBack={back} />
-
+      }
+      header={<TopBar onBack={back} />}>
       <Text variant="title" center className="pt-xs">
         {title}
       </Text>

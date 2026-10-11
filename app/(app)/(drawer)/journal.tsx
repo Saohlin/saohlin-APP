@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -26,10 +26,11 @@ import {
   TextButton,
   TopBar,
   WeekStrip,
+  useHeaderInset,
 } from '../../../components/ui';
 import { useI18n } from '../../../i18n';
-import { JournalError, getHome, type JournalErrorKind } from '../../../lib/api/journal';
-import { dateToDay, dayToDate, displayDay } from '../../../lib/journal/format';
+import { JournalError, getHome, listEntries, type EntrySummary, type JournalErrorKind } from '../../../lib/api/journal';
+import { cursorForDay, dateToDay, dayToDate, displayDay, takeDay } from '../../../lib/journal/format';
 import { journalStore, useJournalStore } from '../../../lib/journal/store';
 import {
   SCROLL_FADE_HEIGHT,
@@ -64,6 +65,7 @@ const INSET = 'px-[20px]';
 export default function Journal() {
   const { t, tp } = useI18n();
   const router = useRouter();
+  const headerInset = useHeaderInset();
   const { colors } = useTheme();
   const { session } = useSession();
   const { home, deleted, flash } = useJournalStore(session?.userId ?? null);
@@ -124,11 +126,55 @@ export default function Journal() {
   const isToday = day === today;
   const dayCount = home ? (isToday ? home.todayCount : home.week.find((d) => d.date === day)?.count ?? 0) : 0;
 
+  /**
+   * Entries of the day chosen in the strip. Until a day is tapped the list
+   * below shows the most recent entries; once one is, it shows that day only.
+   */
+  const [dayRows, setDayRows] = useState<{ day: string; items: EntrySummary[] } | 'failed' | null>(null);
+  const daySeq = useRef(0);
+  const chosen = inWeek ? picked : null;
+  const loadDay = useCallback(async (iso: string) => {
+    const mine = ++daySeq.current;
+    try {
+      const page = await listEntries(cursorForDay(iso), { limit: 30 });
+      if (mine === daySeq.current) setDayRows({ day: iso, items: takeDay(page.items, iso).items });
+    } catch {
+      if (mine === daySeq.current) setDayRows('failed');
+    }
+  }, []);
+  useEffect(() => {
+    if (!chosen) {
+      daySeq.current++;
+      setDayRows(null);
+      return;
+    }
+    setDayRows(null);
+    void loadDay(chosen);
+  }, [chosen, loadDay]);
+  // Coming back from writing or deleting an entry: the chosen day may have changed.
+  useFocusEffect(
+    useCallback(() => {
+      if (chosen) void loadDay(chosen);
+    }, [chosen, loadDay]),
+  );
+  const dayItems = chosen && dayRows && dayRows !== 'failed' && dayRows.day === chosen ? dayRows.items : null;
+
   const openEntry = (id: string) => router.push({ pathname: '/journal/[id]', params: { id } });
 
   // No bottom edge: the scroller runs to the screen edge; list padding clears the home indicator.
   return (
-    <Screen padded={false} edges={['top']}>
+    <Screen
+      padded={false}
+      edges={['top']}
+      headerInset={false}
+      header={
+        <TopBar
+          onBack={() => (router.canGoBack() ? router.back() : router.replace('/chat'))}
+          action="search"
+          actionLabel={t('a11y.search')}
+          onActionPress={() => router.push({ pathname: '/journal/archive', params: { search: '1' } })}
+        />
+      }>
       <ScrollView
         onScroll={onScroll}
         scrollEventThrottle={32}
@@ -136,14 +182,7 @@ export default function Journal() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.accent} />
         }>
-        <View className={`${INSET} pb-xxl`}>
-          <TopBar
-            onBack={() => (router.canGoBack() ? router.back() : router.replace('/chat'))}
-            action="search"
-            actionLabel={t('a11y.search')}
-            onActionPress={() => router.push({ pathname: '/journal/archive', params: { search: '1' } })}
-          />
-
+        <View className={`${INSET} pb-xxl`} style={{ paddingTop: headerInset }}>
           <Text variant="title" center className="pt-xs">
             {t('journal.title')}
           </Text>
@@ -213,27 +252,65 @@ export default function Journal() {
             />
           ) : null}
 
-          <SectionHeader
-            title={t('journal.archive')}
-            action={home && home.total > 0 ? t('common.showAll') : undefined}
-            onActionPress={() => router.push('/journal/archive')}
-            className="pt-lg"
-          />
-
-          {!home ? (
-            fault ? (
-              <JournalFault kind={fault} onRetry={() => void load()} compact />
-            ) : (
-              <EntryRowsSkeleton rows={4} />
-            )
-          ) : home.total === 0 ? (
-            <EmptyState compact title={t('states.emptyJournalTitle')} message={t('states.emptyJournalMessage')} />
+          {chosen ? (
+            <>
+              {/* A day is chosen: the list is that day's entries, not the recent ones. */}
+              <SectionHeader
+                title={chosen === today ? t('journal.today') : displayDay(chosen)}
+                action={home && home.total > 0 ? t('common.showAll') : undefined}
+                onActionPress={() => router.push('/journal/archive')}
+                className="pt-lg"
+              />
+              {dayRows === 'failed' ? (
+                <Banner
+                  tone="warning"
+                  message={t('journal.refreshFailed')}
+                  actionLabel={t('common.tryAgain')}
+                  onAction={() => void loadDay(chosen)}
+                />
+              ) : !dayItems ? (
+                <EntryRowsSkeleton rows={2} />
+              ) : dayItems.length === 0 ? (
+                <EmptyState
+                  compact
+                  icon={null}
+                  className="pt-xxl"
+                  title={t('journal.emptyDayTitle')}
+                  message={t('journal.emptyDayMessage')}
+                />
+              ) : (
+                <View style={{ gap: ROW_GAP }}>
+                  {dayItems.map((e) => (
+                    <EntryRow key={e.id} entry={e} onPress={() => openEntry(e.id)} />
+                  ))}
+                </View>
+              )}
+            </>
           ) : (
-            <View style={{ gap: ROW_GAP }}>
-              {home.recent.map((e) => (
-                <EntryRow key={e.id} entry={e} onPress={() => openEntry(e.id)} />
-              ))}
-            </View>
+            <>
+            <SectionHeader
+              title={t('journal.archive')}
+              action={home && home.total > 0 ? t('common.showAll') : undefined}
+              onActionPress={() => router.push('/journal/archive')}
+              className="pt-lg"
+            />
+
+            {!home ? (
+              fault ? (
+                <JournalFault kind={fault} onRetry={() => void load()} compact />
+              ) : (
+                <EntryRowsSkeleton rows={4} />
+              )
+            ) : home.total === 0 ? (
+              <EmptyState compact icon={null} className="pt-xxl" title={t('states.emptyJournalTitle')} message={t('states.emptyJournalMessage')} />
+            ) : (
+              <View style={{ gap: ROW_GAP }}>
+                {home.recent.map((e) => (
+                  <EntryRow key={e.id} entry={e} onPress={() => openEntry(e.id)} />
+                ))}
+              </View>
+            )}
+            </>
           )}
         </View>
       </ScrollView>

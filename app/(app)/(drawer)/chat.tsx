@@ -77,8 +77,9 @@ export default function Chat() {
   const { state } = chat;
 
   // Capitalise only the first letter; names like `van der Berg` must stay as typed.
-  const vocative = profile?.vocative?.trim() || '';
-  const name = vocative ? vocative.charAt(0).toUpperCase() + vocative.slice(1) : '';
+  // The greeting uses the name the user typed, never a derived vocative.
+  const typed = profile?.displayName?.trim() || '';
+  const name = typed ? typed.charAt(0).toUpperCase() + typed.slice(1) : '';
 
   // The thinking copy changes at 4 s.
   useEffect(() => {
@@ -147,6 +148,9 @@ export default function Chat() {
     }
   };
 
+  // From the copy glyph under a reply: the glyph itself confirms, so no toast.
+  const copyQuietly = (text: string) => void copyText(text);
+  // From the long-press menu, where there is no glyph to change.
   const onCopy = async (text: string) => {
     if (await copyText(text)) setToast({ tone: 'success', message: t('chat.copied') });
   };
@@ -196,6 +200,7 @@ export default function Chat() {
 
   const trialRemaining = state.trialRemaining ?? entitlement.trialRemaining;
   const empty = state.messages.length === 0 && !state.loading;
+  const showTrial = !entitlement.active && trialRemaining > 0;
   const lastUserKey = [...state.messages].reverse().find((m) => m.role === 'user')?.key;
 
   return (
@@ -213,27 +218,30 @@ export default function Chat() {
             onMic={() => {}}
           />
         </View>
-      }>
-      <View className="px-gutter">
-        <TopBar
-          menu
-          menuDisabled={chat.busy}
-          title={t('nav.chat')}
-          action="more"
-          actionVariant="plain"
-          actionLabel={t('a11y.more')}
-          onActionPress={() => setMenuOpen(true)}
-        />
-        {!entitlement.active && trialRemaining > 0 ? (
-          <TrialCounter
-            remaining={trialRemaining}
-            total={entitlement.trialTotal}
-            className="mt-xxs"
-            onPress={() => router.push('/paywall')}
+      }
+      // The chat keeps a plain header: no veil, and messages stop below it.
+      pinHeader={false}
+      header={
+        <>
+          <TopBar
+            menu
+            menuDisabled={chat.busy}
+            title={t('nav.chat')}
+            action="more"
+            actionVariant="plain"
+            actionLabel={t('a11y.more')}
+            onActionPress={() => setMenuOpen(true)}
           />
-        ) : null}
-      </View>
-
+          {showTrial ? (
+            <TrialCounter
+              remaining={trialRemaining}
+              total={entitlement.trialTotal}
+              className="mt-xxs"
+              onPress={() => router.push('/paywall')}
+            />
+          ) : null}
+        </>
+      }>
       <ScrollView
         ref={scroll}
         className="flex-1 px-gutter"
@@ -255,11 +263,6 @@ export default function Chat() {
           </View>
         ) : null}
 
-        {/* AI Act Art. 50: disclosed at the start of every conversation. */}
-        <Text variant="micro" tone="tertiary" center className={empty ? '-mt-md' : 'pt-sm'}>
-          {t('chat.aiDisclosure')}
-        </Text>
-
         {state.hasMore ? (
           <TextButton title={t('chat.loadOlder')} onPress={() => void chat.loadOlder()} className="self-center" />
         ) : null}
@@ -277,7 +280,7 @@ export default function Chat() {
             }
             failedMessage={t(failureCopy(state.notice, !!m.id))}
             heldMessage={t('chat.held')}
-            onCopy={onCopy}
+            onCopy={copyQuietly}
             onMenu={setPicked}
             onOpenEntry={(id) => router.push({ pathname: '/journal/[id]', params: { id } })}
           />

@@ -12,7 +12,7 @@ import {
 
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { GuideDrawGrid, Icon, Screen, Text, Title, TopBar } from '../../../components/ui';
+import { GuideDrawGrid, Icon, Screen, Text, Title, TopBar, useHeaderInset } from '../../../components/ui';
 import { GUIDE_BACK, shuffleGuides } from '../../../guides';
 import { useI18n } from '../../../i18n';
 import {
@@ -35,6 +35,7 @@ const GRID_TOP = 49;
 export default function Cards() {
   const { t } = useI18n();
   const router = useRouter();
+  const headerInset = useHeaderInset();
   const { colors } = useTheme();
   /**
    * Reshuffle each time the screen gains focus. The drawer keeps screens mounted,
@@ -85,31 +86,33 @@ export default function Cards() {
   // No bottom edge: the scroller runs to the screen edge. The list's own padding
   // lifts the last row clear of the home indicator.
   return (
-    <Screen padded={false} edges={['top']}>
-      <TopBar menu />
-
-      <View className="px-gutter">
-        {/* Long heading is allowed to shrink. */}
-        <Title center numberOfLines={1} adjustsFontSizeToFit className="pt-sm">
-          {t('cards.forYou')}
-        </Title>
-        <Text variant="caption" center className="pt-xs">
-          {t('cards.drawPrompt')}
-        </Text>
-        <Text variant="caption" center className="pt-xxs">
-          {t('cards.trustIntuition')}
-        </Text>
-      </View>
-
+    <Screen
+      padded={false}
+      edges={['top']}
+      headerInset={false}
+      header={<TopBar onBack={() => (router.canGoBack() ? router.back() : router.replace('/chat'))} />}>
       <View className="flex-1">
+        {/* The heading scrolls with the grid, so everything passes behind the pinned bar. */}
         <ScrollView
           onScroll={onScroll}
           scrollEventThrottle={32}
           showsVerticalScrollIndicator
           accessibilityHint={t('cards.moreBelow')}
           contentContainerClassName="px-gutter pb-xxl"
-          style={{ marginTop: GRID_TOP }}>
-          <GuideDrawGrid back={GUIDE_BACK} count={deck.length} onPick={open} />
+          contentContainerStyle={{ paddingTop: headerInset }}>
+          {/* Long heading is allowed to shrink. */}
+          <Title center numberOfLines={1} adjustsFontSizeToFit className="pt-sm">
+            {t('cards.forYou')}
+          </Title>
+          <Text variant="caption" center className="pt-xs">
+            {t('cards.drawPrompt')}
+          </Text>
+          <Text variant="caption" center className="pt-xxs">
+            {t('cards.trustIntuition')}
+          </Text>
+          <View style={{ marginTop: GRID_TOP }}>
+            <GuideDrawGrid back={GUIDE_BACK} count={deck.length} onPick={open} />
+          </View>
         </ScrollView>
 
         <Animated.View

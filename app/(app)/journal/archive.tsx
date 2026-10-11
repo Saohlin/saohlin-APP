@@ -22,6 +22,7 @@ import {
   Text,
   TextButton,
   TopBar,
+  useHeaderInset,
 } from '../../../components/ui';
 import { useI18n } from '../../../i18n';
 import {
@@ -85,6 +86,7 @@ type Search =
 export default function JournalArchive() {
   const { t } = useI18n();
   const router = useRouter();
+  const headerInset = useHeaderInset();
   const { colors } = useTheme();
   const { session } = useSession();
   const { revision, deleted, flash } = useJournalStore(session?.userId ?? null);
@@ -320,9 +322,14 @@ export default function JournalArchive() {
   ) : null;
 
   return (
-    <Screen padded={false} edges={['top']}>
-      <View className="gap-sm px-gutter pb-sm">
+    <Screen
+      padded={false}
+      edges={['top']}
+      headerInset={false}
+      header={
         <TopBar onBack={() => (router.canGoBack() ? router.back() : router.replace('/journal'))} title={t('journal.archive')} />
+      }>
+      <View className="px-gutter pb-sm" style={{ paddingTop: headerInset }}>
         <SearchField
           value={query}
           onChangeText={setQuery}
