@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { czechVocative, useSession, zodiacFor, type DeeperAnswers, type Gender } from '../../../auth';
+import { useSession, zodiacFor, type DeeperAnswers, type Gender } from '../../../auth';
 import {
   Banner,
   DateField,
@@ -58,7 +58,6 @@ export default function EditProfile() {
   const { profile, context, saveProfile, saveDeeper } = useSession();
 
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '');
-  const [vocative, setVocative] = useState(profile?.vocative ?? '');
   const [dob, setDob] = useState(profile?.dateOfBirth);
   const [gender, setGender] = useState<Gender | undefined>(profile?.gender);
   const [answers, setAnswers] = useState<DeeperAnswers>(context);
@@ -78,12 +77,6 @@ export default function EditProfile() {
 
   const genderLabel = GENDERS.find((g) => g.value === gender);
 
-  const onNameChange = (v: string) => {
-    // Keep the greeting in step with the name unless the user changed it by hand.
-    if (vocative === czechVocative(displayName)) setVocative(czechVocative(v));
-    setDisplayName(v);
-  };
-
   const save = async () => {
     const name = displayName.trim();
     if (!name) {
@@ -96,7 +89,8 @@ export default function EditProfile() {
     try {
       await saveProfile({
         displayName: name,
-        vocative: vocative.trim() || czechVocative(name),
+        // She is addressed by the name exactly as typed, so the two are stored the same.
+        vocative: name,
         dateOfBirth: dob,
         gender,
         zodiac: zodiacFor(dob),
@@ -125,9 +119,8 @@ export default function EditProfile() {
           {error ? <Banner tone="warning" message={error} className="mb-md" /> : null}
           <LiquidButton title={t('common.save')} loading={busy} onPress={save} />
         </View>
-      }>
-      <TopBar onBack={() => router.back()} />
-
+      }
+      header={<TopBar onBack={() => router.back()} />}>
       <Title center className="pt-sm">
         {t('profile.edit')}
       </Title>
@@ -138,21 +131,10 @@ export default function EditProfile() {
           placeholder={t('auth.firstNamePlaceholder')}
           value={displayName}
           error={submitted && !displayName.trim() ? t('onboarding.nameRequired') : undefined}
-          onChangeText={onNameChange}
+          onChangeText={setDisplayName}
           autoCapitalize="words"
           textContentType="givenName"
         />
-        <View>
-          <TextField
-            label={t('profile.vocative')}
-            value={vocative}
-            onChangeText={setVocative}
-            autoCapitalize="words"
-          />
-          <Text variant="micro" tone="tertiary" className="pt-xxs">
-            {t('profile.vocativeHint')}
-          </Text>
-        </View>
         <DateField
           label={t('onboarding.dateOfBirth')}
           value={dob ? displayDob(dob) : undefined}

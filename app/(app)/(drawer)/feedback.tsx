@@ -10,6 +10,7 @@ import {
   Text,
   TextArea,
   TopBar,
+  useKeyboardVisible,
 } from '../../../components/ui';
 import { useI18n } from '../../../i18n';
 import { capsule, useTheme } from '../../../theme';
@@ -30,6 +31,7 @@ export default function Feedback() {
   /** Set on the first press. The button is never disabled; an empty message shows a field error. */
   const [submitted, setSubmitted] = useState(false);
   const canSend = message.trim().length > 0;
+  const keyboardUp = useKeyboardVisible();
 
   return (
     <Screen
@@ -49,6 +51,10 @@ export default function Feedback() {
             accessory={<Icon name="send" size={17} weight="bold" color={capsule.label} />}
           />
 
+          {/* While typing, only the send button stays above the keyboard: the rule and
+             the email line would take the room the message needs. */}
+          {keyboardUp ? null : (
+            <>
           {/* "NEBO" sits inside a full-width rule. */}
           <View className="flex-row items-center gap-sm pt-xs">
             {/* Drawn inline rather than with Divider: the needed strength (`edge-strong`)
@@ -72,30 +78,37 @@ export default function Feedback() {
               {EMAIL}
             </Text>
           </Pressable>
+            </>
+          )}
         </View>
-      }>
-      <TopBar onBack={() => (router.canGoBack() ? router.back() : router.replace('/chat'))} />
-
-      <Text variant="display" tone="brand" center className="pt-md">
-        {t('feedback.heading')}
-      </Text>
-
-      {/* Phosphor outline heart; the Unicode heart isn't in either font. */}
-      <View className="items-center pt-xs">
-        <Icon name="heart" size={HEART} weight="light" color={colors.brandViolet} />
-      </View>
-
-      <View className="gap-lg pt-xl">
-        <Text variant="body" tone="strong">
-          {t('feedback.intro')}
+      }
+      header={<TopBar onBack={() => (router.canGoBack() ? router.back() : router.replace('/chat'))} />}>
+      {/* With the keyboard up the heading and the two paragraphs step aside, so the
+         message box has the whole space above the keyboard instead of a sliver. */}
+      {keyboardUp ? null : (
+        <>
+        <Text variant="display" tone="brand" center className="pt-md">
+          {t('feedback.heading')}
         </Text>
-        <Text variant="body" tone="strong">
-          {t('feedback.body1')}
-        </Text>
-      </View>
+
+        {/* Phosphor outline heart; the Unicode heart isn't in either font. */}
+        <View className="items-center pt-xs">
+          <Icon name="heart" size={HEART} weight="light" color={colors.brandViolet} />
+        </View>
+
+        <View className="gap-lg pt-xl">
+          <Text variant="body" tone="strong">
+            {t('feedback.intro')}
+          </Text>
+          <Text variant="body" tone="strong">
+            {t('feedback.body1')}
+          </Text>
+        </View>
+        </>
+      )}
 
       {/* The card is the field (`bare` TextArea), visible without scrolling. */}
-      <GlassCard className="mt-lg flex-1" padding="flex-1 px-md py-sm">
+      <GlassCard className={keyboardUp ? 'mt-sm flex-1' : 'mt-lg flex-1'} padding="flex-1 px-md py-sm">
         <TextArea
           bare
           grow

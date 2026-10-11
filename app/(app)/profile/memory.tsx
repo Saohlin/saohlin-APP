@@ -136,9 +136,8 @@ export default function Memory() {
         <View className="pb-lg">
           <LiquidButton title={t('profile.edit')} onPress={() => router.push('/profile/edit')} />
         </View>
-      }>
-      <TopBar onBack={() => router.back()} />
-
+      }
+      header={<TopBar onBack={() => router.back()} />}>
       <Title center className="pt-sm">
         {t('profile.memoryTitle')}
       </Title>
@@ -148,7 +147,6 @@ export default function Memory() {
 
       <SectionHeader title={t('profile.memoryBasics')} className="pt-lg" />
       <Fact label={t('onboarding.howToAddress')} value={profile?.displayName ?? '-'} />
-      <Fact label={t('profile.vocative')} value={profile?.vocative ?? '-'} />
       {profile?.dateOfBirth ? (
         <Fact label={t('onboarding.dateOfBirth')} value={displayDob(profile.dateOfBirth)} />
       ) : null}
