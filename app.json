@@ -46,6 +46,14 @@
             "backgroundColor": "#DCD5DA"
           }
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
       ]
     ],
     "scheme": "saohlin",
