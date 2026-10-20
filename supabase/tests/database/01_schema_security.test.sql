@@ -60,7 +60,8 @@ select is(
         'journal_days', 'journal_delete', 'journal_get', 'journal_home', 'journal_list', 'journal_restore',
         'journal_save', 'journal_save_message', 'journal_search', 'journal_share', 'journal_unshare',
         'list_conversations',
-        'rename_conversation', 'restore_conversation', 'save_context', 'update_profile', 'withdraw_consent'],
+        'rename_conversation', 'restore_conversation', 'save_context', 'send_feedback', 'update_profile',
+        'withdraw_consent'],
   'only allow-listed functions are executable by authenticated'
 );
 

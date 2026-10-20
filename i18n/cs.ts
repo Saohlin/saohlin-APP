@@ -527,6 +527,22 @@ export const cs = {
     info: 'Informace',
   },
 
+  // Claudia's testing marks under an answer (tester accounts only). DRAFT wording.
+  marks: {
+    label: 'Ohodnoť odpověď',
+    right: 'Sedí',
+    tooGeneric: 'Příliš obecné',
+    shouldHaveAsked: 'Měla se zeptat',
+    wrongGuide: 'Špatný průvodce',
+    addNote: 'Přidat poznámku',
+    editNote: 'Upravit poznámku',
+    noteTitle: 'Poznámka k odpovědi',
+    notePlaceholder: 'Co by Claudia odpověděla jinak?',
+    save: 'Uložit',
+    saved: 'Uloženo',
+    failed: 'Nepodařilo se uložit. Zkus to znovu.',
+  },
+
   a11y: {
     back: 'Zpět',
     close: 'Zavřít',

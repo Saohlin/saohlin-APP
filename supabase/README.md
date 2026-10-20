@@ -206,3 +206,26 @@ Deploy:
 
 Check: send a message from the app, then
 `select created_at, notified_at, notify_attempts, notify_error from public.feedback order by created_at desc limit 5;`
+
+## Admin and testing mode (admin panel parts 1 and 2)
+
+Migration `20261018100000_admin_testing.sql` and the `admin` Edge Function. The
+admin web app (the separate `saohlin-admin` repo) reads and changes data only through `admin`, which
+checks the token, two-factor (`aal2`) and `app_metadata.saohlin_admin`, then calls
+an `admin_*` database function that checks the admin flag again and writes
+`ops.admin_log`. Only accounts in `private.testers` can mark answers, and only
+their conversations can be opened by an admin.
+
+Deploy:
+
+1. `supabase db push`
+2. `supabase functions deploy admin` (JWT verification stays on; no new secret)
+3. Dashboard > Authentication > Multi-Factor: TOTP enabled.
+4. Admins, in the SQL editor:
+   `update auth.users set raw_app_meta_data = raw_app_meta_data || '{"saohlin_admin": true}' where email = '...';`
+5. Testers: `select ops.set_tester('<email>', true);` (`false` removes one).
+6. Sign out and in again so the new flags reach the token.
+
+Who did what: `select created_at, admin_id, action, target, detail from ops.admin_log order by id desc limit 50;`
+
+Tests: `11_admin_testing.test.sql` (pgTAP) and `deno test -A supabase/functions/admin/`.

@@ -7,6 +7,10 @@ insert into auth.users (id, email, raw_user_meta_data) values
    '{"profile":{"displayName":"Anna","vocative":"Anno","dateOfBirth":"1990-05-05"},"consent":{"accepted":true}}'),
   ('00000000-0000-0000-0000-0000000000b1', 'b1@test.local',
    '{"profile":{"displayName":"Bára","vocative":"Báro","dateOfBirth":"1991-06-06"},"consent":{"accepted":true}}');
+-- Both are testers, so the mark checks below test ownership, not the tester rule
+-- (that rule is tested in 11_admin_testing).
+insert into private.testers (user_id) values
+  ('00000000-0000-0000-0000-0000000000a1'), ('00000000-0000-0000-0000-0000000000b1');
 
 -- Service functions are not callable by the app ------------------------------------
 

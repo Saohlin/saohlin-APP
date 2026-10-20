@@ -405,6 +405,12 @@ enabled = true
 # (x-jobs-secret), which the function checks itself.
 verify_jwt = false
 
+[functions.admin]
+enabled = true
+# Admin web only. The gateway checks the JWT; the function then checks aal2 and
+# app_metadata.saohlin_admin itself, and takes the admin id only from the token.
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

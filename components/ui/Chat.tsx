@@ -1,6 +1,6 @@
 import { haptic } from '../../lib/haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Animated,
   Easing,
@@ -78,6 +78,7 @@ export function ChatBubble({
   onCopy,
   onLongPress,
   showActions,
+  footer,
   className,
 }: {
   sender: Sender;
@@ -89,6 +90,8 @@ export function ChatBubble({
   /** Long press on the bubble opens the message's own menu (copy, save to the journal). */
   onLongPress?: () => void;
   showActions?: boolean;
+  /** Shown under the bubble, inside its column: the testing marks on a tester account. */
+  footer?: ReactNode;
   className?: string;
 }) {
   const t = useT();
@@ -178,6 +181,7 @@ export function ChatBubble({
             ) : null}
           </View>
         </Pressable>
+        {footer}
       </View>
     </View>
   );

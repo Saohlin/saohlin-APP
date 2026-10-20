@@ -1,10 +1,11 @@
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { useSession } from '../../../auth';
 import { SharedEntryCard } from '../../../components/journal';
 import {
+  AnswerMarks,
   Banner,
   ChatBubble,
   ChatComposer,
@@ -15,8 +16,10 @@ import {
   ListRow,
   MessageFailed,
   Screen,
+  SecondaryButton,
   Sheet,
   Text,
+  TextArea,
   TextButton,
   Toast,
   TopBar,
@@ -34,6 +37,8 @@ import { useChat } from '../../../lib/chat/useChat';
 import { uuidv4 } from '../../../lib/chat/uuid';
 import { limitCopy } from '../../../lib/journal/copy';
 import { journalStore } from '../../../lib/journal/store';
+import { MAX_NOTE_CHARS } from '../../../lib/api/marks';
+import { useAnswerMarks } from '../../../lib/chat/useAnswerMarks';
 
 /** The thinking copy changes after this long without a first sentence. */
 const THINKING_LONG_MS = 4000;
@@ -61,13 +66,18 @@ export default function Chat() {
   const router = useRouter();
   const navigation = useNavigation();
   const { c, opener } = useLocalSearchParams<{ c?: string; opener?: string }>();
-  const { profile, entitlement, refresh } = useSession();
+  const { profile, entitlement, refresh, tester, session } = useSession();
 
   const [draft, setDraft] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [toast, setToast] = useState<{ tone: Tone; message: string } | null>(null);
   const hideToast = useCallback(() => setToast(null), []);
+  /** Testing mode (C6): the answer whose note is being written, and the draft. */
+  const [noteFor, setNoteFor] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const marksFailed = useCallback(() => setToast({ tone: 'error', message: t('marks.failed') }), [t]);
   /** For controls whose feature is not built yet (voice input, listening to a reply). */
   const [soon, setSoon] = useState(false);
   const inProgress = useCallback(() => setSoon(true), []);
@@ -79,6 +89,39 @@ export default function Chat() {
 
   const chat = useChat({ conversationId: c ?? null, onPaywall: () => router.push('/paywall') });
   const { state } = chat;
+
+  // Testing mode (C6): finished answers carry the four marks on tester accounts.
+  const answerIds = useMemo(
+    () => (tester ? state.messages.filter((m) => m.role === 'assistant' && m.status === 'done' && m.id).map((m) => m.id!) : []),
+    [tester, state.messages],
+  );
+  const marks = useAnswerMarks({ enabled: tester, userId: session?.userId, answerIds, onError: marksFailed });
+  const marksFor = (m: UiMessage): ReactNode => {
+    if (!tester || m.role !== 'assistant' || m.status !== 'done' || !m.id) return undefined;
+    const id = m.id;
+    const current = marks.get(id);
+    return (
+      <AnswerMarks
+        marks={current.marks}
+        note={current.note}
+        onToggle={(mark) => marks.toggle(id, mark)}
+        onNote={() => {
+          setNoteDraft(current.note ?? '');
+          setNoteFor(id);
+        }}
+      />
+    );
+  };
+  const saveNote = async () => {
+    if (!noteFor) return;
+    setNoteSaving(true);
+    const ok = await marks.setNote(noteFor, noteDraft.slice(0, MAX_NOTE_CHARS));
+    setNoteSaving(false);
+    if (ok) {
+      setNoteFor(null);
+      setToast({ tone: 'success', message: t('marks.saved') });
+    }
+  };
 
   // Capitalise only the first letter; names like `van der Berg` must stay as typed.
   // The greeting uses the name the user typed, never a derived vocative.
@@ -289,6 +332,7 @@ export default function Chat() {
             onListen={inProgress}
             onMenu={setPicked}
             onOpenEntry={(id) => router.push({ pathname: '/journal/[id]', params: { id } })}
+            footer={marksFor(m)}
           />
         ))}
 
@@ -380,6 +424,18 @@ export default function Chat() {
         />
       </Sheet>
 
+      <Sheet visible={!!noteFor} onClose={() => setNoteFor(null)} title={t('marks.noteTitle')}>
+        <TextArea
+          value={noteDraft}
+          onChangeText={setNoteDraft}
+          placeholder={t('marks.notePlaceholder')}
+          maxLength={MAX_NOTE_CHARS}
+          minHeight={110}
+          autoFocus
+        />
+        <SecondaryButton title={t('marks.save')} onPress={() => void saveNote()} loading={noteSaving} className="mt-md" />
+      </Sheet>
+
       <Dialog
         visible={confirmClear}
         onClose={() => setConfirmClear(false)}
@@ -431,6 +487,7 @@ function MessageView({
   onListen,
   onMenu,
   onOpenEntry,
+  footer,
 }: {
   m: UiMessage;
   userLabel?: string;
@@ -442,6 +499,8 @@ function MessageView({
   onListen: () => void;
   onMenu: (m: UiMessage) => void;
   onOpenEntry: (id: string) => void;
+  /** The testing marks under a finished answer, on tester accounts. */
+  footer?: ReactNode;
 }) {
   if (m.role === 'event') {
     if (m.eventKind === 'crisis_resources') return <CrisisCard lines={crisisLines} />;
@@ -462,6 +521,7 @@ function MessageView({
         onCopy={() => onCopy(m.text)}
         onListen={onListen}
         onLongPress={menu}
+        footer={footer}
       />
     );
   }

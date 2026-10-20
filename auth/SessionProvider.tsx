@@ -44,6 +44,8 @@ type SessionValue = {
   onboarding: OnboardingState;
   entitlement: EntitlementHint;
   settings: UserSettings;
+  /** A tester account: its answers show the four testing marks (C6). Set on the server only. */
+  tester: boolean;
   /** Email awaiting confirmation after sign-up, if any. */
   pendingEmail: string | null;
 
@@ -100,6 +102,8 @@ type Me = {
   userId: string;
   email: string;
   emailVerified: boolean;
+  /** Absent from servers older than the 18 Oct admin migration. */
+  tester?: boolean;
   profile: {
     displayName: string;
     vocative: string;
@@ -463,6 +467,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       onboarding: me?.onboarding ?? {},
       entitlement: me?.entitlement ?? EMPTY_ENTITLEMENT,
       settings: me?.settings ?? DEFAULT_SETTINGS,
+      tester: me?.tester === true,
       pendingEmail,
       signIn,
       signUp,

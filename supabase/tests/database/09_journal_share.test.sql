@@ -420,7 +420,9 @@ select ok(
   (select count(*) = 0 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'private', 'ops') and p.prosrc like '%body_enc%'
      and p.proname not in ('journal_full', 'journal_save', 'journal_save_message', 'journal_search',
-                           'turn_context', 'journal_job_context')),
+                           'turn_context', 'journal_job_context',
+                           -- feedback.body_enc, a different table's column of the same name
+                           'send_feedback', 'claim_feedback')),
   'only the listed functions ever read or write an entry''s body');
 
 select * from finish();

@@ -507,6 +507,21 @@ export const en: Dictionary = {
     info: 'Information',
   },
 
+  marks: {
+    label: 'Rate this answer',
+    right: 'Right',
+    tooGeneric: 'Too generic',
+    shouldHaveAsked: 'Should have asked',
+    wrongGuide: 'Wrong guide',
+    addNote: 'Add a note',
+    editNote: 'Edit note',
+    noteTitle: 'Note on this answer',
+    notePlaceholder: 'What would Claudia have said differently?',
+    save: 'Save',
+    saved: 'Saved',
+    failed: 'Could not save. Try again.',
+  },
+
   a11y: {
     back: 'Back',
     close: 'Close',

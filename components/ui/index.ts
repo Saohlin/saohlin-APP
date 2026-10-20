@@ -36,6 +36,7 @@ export {
 
 export { ProgressBar, StepBar, StepDots, TrialCounter } from './Progress';
 export { ChatBubble, ChatComposer, TypingIndicator, type Sender } from './Chat';
+export { AnswerMarks } from './AnswerMarks';
 export { CrisisCard, MessageFailed, type CrisisLine } from './ChatStates';
 export { GuideCard, GuideDrawGrid, GuideGrid } from './Guide';
 export { WeekStrip } from './Week';
