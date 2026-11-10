@@ -32,7 +32,7 @@ const BODY_FACES = {
 export const fonts = {
   display: 'Michroma_400Regular',
   ...BODY_FACES[BODY_FONT],
-  /** The mantra on the guide screen. Inter only; the body font switch does not cover it. */
+  /** Inter Italic, for the mantra. The body font switch does not cover it. */
   bodyItalic: 'Inter_400Regular_Italic',
 } as const;
 
@@ -64,7 +64,7 @@ export const type = {
   /** The largest brand text: the paywall price, the feedback thank-you. */
   display: michroma(34, 40, 1.6),
   /**
-   * Guide name on the card detail screen, between the back and bookmark
+   * Card name on the card screen, under the back and bookmark
    * buttons. Long names wrap to two lines and shrink to fit.
    */
   guideName: michroma(27, 33, 1.4),
@@ -102,6 +102,22 @@ export const type = {
   caption: inter(12, 21),  // == tailwind.config.js `caption`. Keep in step.
   /** Timestamps, counters, the smallest metadata */
   micro: inter(10, 14),
+  /**
+   * The card screen (Claudia's DŮVĚRA template, 1 Nov): Manrope for everything
+   * but the card name. Keep in step with tailwind.config.js `card-*`.
+   */
+  /** The three keywords under the name: small, widely spaced capitals. */
+  cardKeywords: { ...inter(11, 16, 'Manrope_400Regular'), letterSpacing: 3, textTransform: 'uppercase' as const },
+  /** The quote line under the artwork. */
+  cardQuote: { ...inter(11, 17, 'Manrope_400Regular'), letterSpacing: 2.4, textTransform: 'uppercase' as const },
+  /** Panel headings: VZKAZ PRO TEBE, TVŮJ KONKRÉTNÍ KROK, MANTRA. */
+  cardHeading: { ...inter(13, 18, 'Manrope_500Medium'), letterSpacing: 0.7, textTransform: 'uppercase' as const },
+  /** Panel text. */
+  cardBody: inter(14.5, 23, 'Manrope_400Regular'),
+  /** The reading button's label: long, so set in Manrope to leave room for the arrow. */
+  cardButton: { ...inter(13, 18, 'Manrope_500Medium'), letterSpacing: 0.6, textTransform: 'uppercase' as const, fontWeight: '400' as const },
+  /** The mantra. Manrope has no italic, so Inter Italic stands in. */
+  cardMantra: inter(14.5, 23, 'Inter_400Regular_Italic'),
 } as const;
 
 export type TypeToken = keyof typeof type;

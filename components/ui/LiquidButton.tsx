@@ -9,6 +9,7 @@ import {
   type LayoutChangeEvent,
   type PressableProps,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 
@@ -39,6 +40,11 @@ type LiquidButtonProps = {
   accessory?: React.ReactNode;
   /** Icon before the label, centred together with it. Unlike `accessory`. */
   leading?: React.ReactNode;
+  /**
+   * Replaces the label's type, e.g. `type.cardButton` on the card screen, whose
+   * template sets a long label in Manrope so the arrow fits beside it.
+   */
+  labelStyle?: StyleProp<TextStyle>;
 };
 
 export function LiquidButton({
@@ -52,6 +58,7 @@ export function LiquidButton({
   style,
   accessory,
   leading,
+  labelStyle,
 }: LiquidButtonProps) {
   const off = disabled || loading;
   const press = useRef(new Animated.Value(0)).current;
@@ -112,7 +119,7 @@ export function LiquidButton({
           pointerEvents="none">
           {loading ? null : leading}
           <Text
-            style={styles.label}
+            style={[styles.label, labelStyle]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.85}>

@@ -2,7 +2,7 @@ const colors = require('./theme/tailwind-colors');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./App.tsx', './index.ts', './app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './screens/**/*.{ts,tsx}'],
+  content: ['./App.tsx', './index.ts', './app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './features/**/*.{ts,tsx}', './screens/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
   darkMode: 'class',
   theme: {
@@ -15,6 +15,11 @@ module.exports = {
         sans: ['Inter_400Regular'],
         'sans-medium': ['Inter_500Medium'],
         'sans-semibold': ['Inter_600SemiBold'],
+        // The card screen follows Claudia's DŮVĚRA template: Manrope for its text.
+        // Manrope has no italic, so the mantra keeps Inter Italic.
+        card: ['Manrope_400Regular'],
+        'card-medium': ['Manrope_500Medium'],
+        'card-italic': ['Inter_400Regular_Italic'],
       },
       // Must match theme/typography.ts exactly. These classes are what render.
       fontSize: {
@@ -33,6 +38,10 @@ module.exports = {
         chat: ['13.5px', { lineHeight: '21px' }],
         caption: ['12px', { lineHeight: '21px' }],
         micro: ['10px', { lineHeight: '14px', letterSpacing: '0.6px' }],
+        'card-keywords': ['11px', { lineHeight: '16px', letterSpacing: '3px' }],
+        'card-quote': ['11px', { lineHeight: '17px', letterSpacing: '2.4px' }],
+        'card-heading': ['13px', { lineHeight: '18px', letterSpacing: '0.7px' }],
+        'card-body': ['14.5px', { lineHeight: '23px' }],
       },
       borderRadius: {
         sm: '8px',

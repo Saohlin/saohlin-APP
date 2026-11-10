@@ -16,11 +16,17 @@ export function GlassCard({
   className,
   elevated = true,
   padding,
+  edge = 'accent',
   children,
   ...rest
 }: ViewProps & {
   className?: string;
   elevated?: boolean;
+  /**
+   * `accent`: the violet rim used across the app (default).
+   * `frost`: a thin white rim, as on the panels of the card screen (DŮVĚRA template).
+   */
+  edge?: 'accent' | 'frost';
   /**
    * Classes for the inner box. Replaces the default padding rather than
    * overriding it: NativeWind resolves conflicting utilities by stylesheet
@@ -32,7 +38,7 @@ export function GlassCard({
   return (
     <View
       style={elevated ? shadow.sm : undefined}
-      className={cx('w-full overflow-hidden rounded-card border border-accent/80', className)}
+      className={cx('w-full overflow-hidden rounded-card border', edge === 'frost' ? 'border-glass/80' : 'border-accent/80', className)}
       {...rest}>
       {/* Gradient and lit top edge, shared with the chat bubble. Absolute, so they don't affect size. */}
       <LinearGradient

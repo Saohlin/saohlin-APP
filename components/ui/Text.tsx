@@ -18,7 +18,12 @@ type Variant =
   | 'lead'
   | 'chat'
   | 'caption'
-  | 'micro';
+  | 'micro'
+  | 'cardKeywords'
+  | 'cardQuote'
+  | 'cardHeading'
+  | 'cardBody'
+  | 'cardMantra';
 
 /**
  * Variants pick the font family (Michroma or Inter), so there is no font prop.
@@ -42,6 +47,12 @@ const VARIANTS: Record<Variant, string> = {
   chat: 'font-sans text-chat',
   caption: 'font-sans text-caption',
   micro: 'font-sans text-micro',
+  // The card screen (DŮVĚRA template): Manrope, the mantra in Inter Italic.
+  cardKeywords: 'font-card text-card-keywords uppercase',
+  cardQuote: 'font-card text-card-quote uppercase',
+  cardHeading: 'font-card-medium text-card-heading uppercase',
+  cardBody: 'font-card text-card-body',
+  cardMantra: 'font-card-italic text-card-body',
 };
 
 /**
@@ -66,6 +77,11 @@ const VARIANT_TONE: Record<Variant, NonNullable<TextProps['tone']>> = {
   chat: 'default',
   caption: 'secondary',
   micro: 'tertiary',
+  cardKeywords: 'purple',
+  cardQuote: 'secondary',
+  cardHeading: 'purple',
+  cardBody: 'default',
+  cardMantra: 'default',
 };
 
 export type TextProps = RNTextProps & {

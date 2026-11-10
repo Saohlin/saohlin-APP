@@ -55,7 +55,7 @@ export type IconName =
   | 'calendar' | 'eye' | 'eye-off' | 'gift' | 'heart' | 'shield' | 'back'
   | 'forward' | 'close' | 'check' | 'checks' | 'chevron-down' | 'chevron-right'
   | 'alert' | 'info' | 'refresh' | 'wifi-off' | 'plus' | 'trash' | 'edit'
-  | 'download' | 'star' | 'clock' | 'more' | 'expand' | 'collapse' | 'phone';
+  | 'download' | 'star' | 'clock' | 'more' | 'expand' | 'collapse' | 'phone' | 'arrow-right';
 
 const MAP: Record<IconName, PhosphorIcon> = {
   chat: ChatCircle,
@@ -68,6 +68,8 @@ const MAP: Record<IconName, PhosphorIcon> = {
   mail: Envelope,
   mic: Microphone,
   send: ArrowRight,
+  // The arrow on a call to action, e.g. the card's "Chci svůj výklad" button.
+  'arrow-right': ArrowRight,
   speaker: SpeakerHigh,
   copy: Copy,
   phone: Phone,

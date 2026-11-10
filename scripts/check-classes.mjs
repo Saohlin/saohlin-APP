@@ -28,7 +28,7 @@ const walkDir = (dir) => {
   return out;
 };
 
-const files = ['components', 'app', 'auth', 'theme', 'i18n'].flatMap((d) => walkDir(join(root, d)));
+const files = ['components', 'features', 'app', 'auth', 'theme', 'i18n'].flatMap((d) => walkDir(join(root, d)));
 
 const UTILITY = new RegExp(
   '^(' +
