@@ -55,7 +55,7 @@ select is(
    where n.nspname = 'public'
      and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
      and has_function_privilege('authenticated', p.oid, 'execute')),
-  array['clear_conversation', 'clear_memory', 'complete_onboarding', 'delete_my_account', 'f_unaccent',
+  array['card_today', 'clear_conversation', 'clear_memory', 'complete_onboarding', 'delete_my_account', 'draw_card', 'f_unaccent',
         'forget_note', 'get_conversation', 'get_me', 'get_memory', 'grant_consent',
         'journal_days', 'journal_delete', 'journal_get', 'journal_home', 'journal_list', 'journal_restore',
         'journal_save', 'journal_save_message', 'journal_search', 'journal_share', 'journal_unshare',
