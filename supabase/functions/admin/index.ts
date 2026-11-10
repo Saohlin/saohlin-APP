@@ -30,4 +30,14 @@ Deno.serve(makeHandler({
     return { data, error };
   },
   log,
+  art: {
+    signUpload: async (path) => {
+      const { data, error } = await service.storage.from("card-art").createSignedUploadUrl(path);
+      return error || !data ? null : { signedUrl: data.signedUrl, token: data.token, path: data.path };
+    },
+    remove: async (paths) => {
+      const { error } = await service.storage.from("card-art").remove(paths);
+      if (error) throw error;
+    },
+  },
 }));

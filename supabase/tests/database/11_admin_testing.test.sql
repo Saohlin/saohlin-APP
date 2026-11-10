@@ -81,8 +81,8 @@ select ok(
 
 select is(
   (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname = 'public' and p.proname like 'admin\_%'),
-  4, 'four admin functions exist');
+   where n.nspname = 'public' and p.proname like 'admin\_%' and p.proname not like 'admin\_cards\_%'),
+  4, 'four admin testing functions exist (the card functions are counted in 12_admin_cards)');
 
 select ok(
   not has_function_privilege('service_role', 'ops.set_tester(text, boolean)', 'execute')

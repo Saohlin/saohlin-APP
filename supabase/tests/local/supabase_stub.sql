@@ -56,3 +56,14 @@ create or replace function vault.create_secret(p_secret text, p_name text, p_des
 returns uuid language sql as $$
   insert into vault.secrets (secret, name, description) values (p_secret, p_name, p_description) returning id
 $$;
+
+-- storage (only what the migrations touch: the card-art bucket row) -----------
+create schema if not exists storage;
+grant usage on schema storage to anon, authenticated, service_role;
+create table if not exists storage.buckets (
+  id                 text primary key,
+  name               text not null,
+  public             boolean default false,
+  file_size_limit    bigint,
+  allowed_mime_types text[]
+);
