@@ -20,12 +20,14 @@ import { Manrope_600SemiBold } from '@expo-google-fonts/manrope/600SemiBold';
 import { DMSans_400Regular } from '@expo-google-fonts/dm-sans/400Regular';
 import { DMSans_500Medium } from '@expo-google-fonts/dm-sans/500Medium';
 import { DMSans_600SemiBold } from '@expo-google-fonts/dm-sans/600SemiBold';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { MeshBackdrop } from '../components/brand/MeshBackdrop';
 import { SessionProvider, useSession } from '../auth';
 import { I18nProvider } from '../i18n';
+import { queryClient } from '../lib/queryClient';
 import { ThemeProvider, useTheme } from '../theme';
 
 // Pulls in the compiled Tailwind classes and CSS variables.
@@ -41,8 +43,8 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // `fade` is iOS-only; Android uses `duration`.
 SplashScreen.setOptions({ duration: 320, fade: true });
 
-// Provider order: theme and i18n outermost, then session, then the router,
-// so guards can redirect as soon as the session resolves.
+// Provider order: theme and i18n outermost, then server state, then session,
+// then the router, so guards can redirect as soon as the session resolves.
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Michroma_400Regular,
@@ -66,10 +68,12 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <I18nProvider>
-          <SessionProvider>
-            <SplashGate />
-            <Navigation />
-          </SessionProvider>
+          <QueryClientProvider client={queryClient}>
+            <SessionProvider>
+              <SplashGate />
+              <Navigation />
+            </SessionProvider>
+          </QueryClientProvider>
         </I18nProvider>
       </ThemeProvider>
     </SafeAreaProvider>

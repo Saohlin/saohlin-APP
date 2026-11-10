@@ -23,6 +23,7 @@ import { clearFeedbackDraft } from '../lib/feedback/draft';
 import { clearAllDrafts } from '../lib/journal/drafts';
 import { setHapticsEnabled } from '../lib/haptics';
 import { journalStore } from '../lib/journal/store';
+import { queryClient } from '../lib/queryClient';
 import { supabase } from '../lib/supabase';
 import type {
   AuthStatus,
@@ -155,6 +156,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (!next) {
         loadedFor.current = null;
         setMe(null);
+        // Cached server data (cards, today's draw) belongs to the account that left.
+        queryClient.clear();
         return;
       }
       if (loadedFor.current === next.user.id) return;
