@@ -1,0 +1,33 @@
+import { useNavigation } from 'expo-router';
+import type { DrawerNavigationProp } from 'expo-router/drawer';
+import { Keyboard } from 'react-native';
+
+import { IconButton } from '../ui/Button';
+import { useT } from '../../i18n';
+import { useTheme } from '../../theme';
+
+// Menu button. Finds the nearest drawer navigator itself, so screens just render <TopBar menu />.
+export function DrawerToggle({ disabled }: { disabled?: boolean }) {
+  const t = useT();
+  const { colors } = useTheme();
+  const navigation = useNavigation<DrawerNavigationProp<Record<string, undefined>>>();
+
+  return (
+    <IconButton
+      variant="plain"
+      size={32}
+      iconSize={20}
+      iconColor={colors.textSecondary}
+      name="menu"
+      label={t('a11y.menu')}
+      disabled={disabled}
+      // Put the keyboard away first, so the drawer never opens with it still up.
+      // (A swipe-open already does this through the navigator's keyboardDismissMode.)
+      onPress={() => {
+        Keyboard.dismiss();
+        navigation.openDrawer();
+      }}
+      className="self-start"
+    />
+  );
+}

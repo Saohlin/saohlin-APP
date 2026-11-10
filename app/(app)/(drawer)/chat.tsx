@@ -1,0 +1,573 @@
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AccessibilityInfo, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+
+import { useSession } from '../../../auth';
+import { SharedEntryCard } from '../../../components/journal';
+import {
+  AnswerMarks,
+  Banner,
+  ChatBubble,
+  ChatComposer,
+  CrisisCard,
+  Dialog,
+  InlineMessage,
+  LimitReachedState,
+  ListRow,
+  MessageFailed,
+  Screen,
+  SecondaryButton,
+  Sheet,
+  Text,
+  TextArea,
+  TextButton,
+  Toast,
+  TopBar,
+  TrialCounter,
+  TypingIndicator,
+  type CrisisLine,
+  type Tone,
+} from '../../../components/ui';
+import { useI18n } from '../../../i18n';
+import { crisisResources } from '../../../lib/api/chat';
+import { JournalError, saveMessage } from '../../../lib/api/journal';
+import { copyText } from '../../../lib/clipboard';
+import type { Notice, UiMessage } from '../../../lib/chat/reducer';
+import { useChat } from '../../../lib/chat/useChat';
+import { uuidv4 } from '../../../lib/chat/uuid';
+import { limitCopy } from '../../../lib/journal/copy';
+import { journalStore } from '../../../lib/journal/store';
+import { MAX_NOTE_CHARS } from '../../../lib/api/marks';
+import { useAnswerMarks } from '../../../lib/chat/useAnswerMarks';
+
+/** The thinking copy changes after this long without a first sentence. */
+const THINKING_LONG_MS = 4000;
+/** Auto-scroll follows the reply only while the user is this close to the bottom. */
+const FOLLOW_SLACK = 80;
+/** The server rejects longer messages (limits.message_max_chars). */
+const MAX_MESSAGE_CHARS = 4000;
+
+/**
+ * Chat with CLAUDIA AI (screens 12 to 22). The first reply is often a
+ * question, and reply length varies a lot by mode, so the layout must not
+ * assume long answers. Opened with `?c=<conversationId>` it reads and
+ * continues a past conversation.
+ *
+ * `?opener=journal` arrives with a conversation that was just opened on a
+ * shared journal entry: the first line is sent for the user, so CLAUDIA AI
+ * answers the entry without them having to type. The entry itself is never
+ * sent from here; the server reads it.
+ *
+ * A long press on a message offers "save to journal": the server copies the
+ * stored message, so no text travels back from the phone.
+ */
+export default function Chat() {
+  const { t } = useI18n();
+  const router = useRouter();
+  const navigation = useNavigation();
+  const { c, opener } = useLocalSearchParams<{ c?: string; opener?: string }>();
+  const { profile, entitlement, refresh, tester, session } = useSession();
+
+  const [draft, setDraft] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [toast, setToast] = useState<{ tone: Tone; message: string } | null>(null);
+  const hideToast = useCallback(() => setToast(null), []);
+  /** Testing mode (C6): the answer whose note is being written, and the draft. */
+  const [noteFor, setNoteFor] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const marksFailed = useCallback(() => setToast({ tone: 'error', message: t('marks.failed') }), [t]);
+  /** For controls whose feature is not built yet (voice input, listening to a reply). */
+  const [soon, setSoon] = useState(false);
+  const inProgress = useCallback(() => setSoon(true), []);
+  const closeSoon = useCallback(() => setSoon(false), []);
+  /** The message whose menu is open. */
+  const [picked, setPicked] = useState<UiMessage | null>(null);
+  const [thinkingLong, setThinkingLong] = useState(false);
+  const [storedCrisis, setStoredCrisis] = useState<CrisisLine[]>([]);
+
+  const chat = useChat({ conversationId: c ?? null, onPaywall: () => router.push('/paywall') });
+  const { state } = chat;
+
+  // Testing mode (C6): finished answers carry the four marks on tester accounts.
+  const answerIds = useMemo(
+    () => (tester ? state.messages.filter((m) => m.role === 'assistant' && m.status === 'done' && m.id).map((m) => m.id!) : []),
+    [tester, state.messages],
+  );
+  const marks = useAnswerMarks({ enabled: tester, userId: session?.userId, answerIds, onError: marksFailed });
+  const marksFor = (m: UiMessage): ReactNode => {
+    if (!tester || m.role !== 'assistant' || m.status !== 'done' || !m.id) return undefined;
+    const id = m.id;
+    const current = marks.get(id);
+    return (
+      <AnswerMarks
+        marks={current.marks}
+        note={current.note}
+        onToggle={(mark) => marks.toggle(id, mark)}
+        onNote={() => {
+          setNoteDraft(current.note ?? '');
+          setNoteFor(id);
+        }}
+      />
+    );
+  };
+  const saveNote = async () => {
+    if (!noteFor) return;
+    setNoteSaving(true);
+    const ok = await marks.setNote(noteFor, noteDraft.slice(0, MAX_NOTE_CHARS));
+    setNoteSaving(false);
+    if (ok) {
+      setNoteFor(null);
+      setToast({ tone: 'success', message: t('marks.saved') });
+    }
+  };
+
+  // Capitalise only the first letter; names like `van der Berg` must stay as typed.
+  // The greeting uses the name the user typed, never a derived vocative.
+  const typed = profile?.displayName?.trim() || '';
+  const name = typed ? typed.charAt(0).toUpperCase() + typed.slice(1) : '';
+
+  // The thinking copy changes at 4 s.
+  useEffect(() => {
+    if (state.phase !== 'thinking' && state.phase !== 'sending') {
+      setThinkingLong(false);
+      return;
+    }
+    const timer = setTimeout(() => setThinkingLong(true), THINKING_LONG_MS);
+    return () => clearTimeout(timer);
+  }, [state.phase]);
+
+  // Nothing interrupts a message in flight: the drawer waits for done.
+  useEffect(() => {
+    navigation.setOptions({ swipeEnabled: !chat.busy });
+  }, [navigation, chat.busy]);
+
+  // A limit the server did not store hands the text back to the composer.
+  useEffect(() => {
+    if (state.restoreDraft) {
+      setDraft((d) => d || state.restoreDraft!);
+      chat.draftRestored();
+    }
+  }, [state.restoreDraft, chat]);
+
+  // Back from the paywall: re-read the membership; if it is active, answer the held message in place.
+  const heldId = state.notice?.kind === 'paywall' ? state.notice.userMessageId : null;
+  useFocusEffect(
+    useCallback(() => {
+      if (heldId) void refresh();
+    }, [heldId, refresh]),
+  );
+  useEffect(() => {
+    if (heldId && entitlement.active) chat.resume(heldId);
+  }, [heldId, entitlement.active, chat]);
+
+  // A reopened conversation that held a crisis card shows the lines again.
+  const hasCrisisEvent = state.messages.some((m) => m.eventKind === 'crisis_resources');
+  useEffect(() => {
+    if (hasCrisisEvent) void crisisResources().then(setStoredCrisis).catch(() => {});
+  }, [hasCrisisEvent]);
+
+  // Screen readers hear a reply once, when it is complete, not sentence by sentence.
+  const lastMessage = state.messages[state.messages.length - 1];
+  const completedReply = lastMessage?.role === 'assistant' && lastMessage.status === 'done' && state.phase === 'idle' ? lastMessage : null;
+  const announced = useRef<string | null>(null);
+  useEffect(() => {
+    if (completedReply && state.inFlight === null && announced.current !== completedReply.key && completedReply.key.startsWith('reply:')) {
+      announced.current = completedReply.key;
+      AccessibilityInfo.announceForAccessibility(`${t('brand.ai')}: ${completedReply.text}`);
+    }
+  }, [completedReply, state.inFlight, t]);
+
+  // Auto-scroll follows the reply unless the user has scrolled up to read.
+  const scroll = useRef<ScrollView>(null);
+  const atBottom = useRef(true);
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+    atBottom.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - FOLLOW_SLACK;
+    if (contentOffset.y < 40 && state.hasMore && !state.loading) void chat.loadOlder();
+  };
+
+  const onSend = () => {
+    if (chat.send(draft)) {
+      setDraft('');
+      atBottom.current = true;
+    }
+  };
+
+  // From the copy glyph under a reply: the glyph itself confirms, so no toast.
+  const copyQuietly = (text: string) => void copyText(text);
+  // From the long-press menu, where there is no glyph to change.
+  const onCopy = async (text: string) => {
+    if (await copyText(text)) setToast({ tone: 'success', message: t('chat.copied') });
+  };
+
+  // A conversation just opened on a shared entry: say the first line once.
+  const openerSent = useRef<string | null>(null);
+  useEffect(() => {
+    if (opener !== 'journal' || !c || openerSent.current === c) return;
+    if (state.conversationId !== c || state.loading || chat.busy) return;
+    openerSent.current = c;
+    router.setParams({ opener: undefined });
+    const onEntry = state.messages.some((m) => m.eventKind === 'journal_shared');
+    const spoken = state.messages.some((m) => m.role === 'user');
+    if (onEntry && !spoken && chat.send(t('journal.shareOpener'))) atBottom.current = true;
+  }, [opener, c, state.conversationId, state.loading, state.messages, chat, router, t]);
+
+  // One id per message, kept across retries: saving the same message twice is one entry.
+  const saveIds = useRef(new Map<string, string>());
+  const saving = useRef(false);
+  const onSaveToJournal = async (m: UiMessage) => {
+    if (!m.id || saving.current) return;
+    saving.current = true;
+    const messageId = m.id;
+    if (!saveIds.current.has(messageId)) saveIds.current.set(messageId, uuidv4());
+    try {
+      const res = await saveMessage(messageId, saveIds.current.get(messageId)!);
+      if (res.kind === 'ok') {
+        // The Deník screen re-reads on its next visit.
+        journalStore.changed();
+        setToast({ tone: 'success', message: t('journal.savedFromChat') });
+      } else {
+        setToast({ tone: 'warning', message: t(limitCopy(res)) });
+      }
+    } catch (e) {
+      const kind = e instanceof JournalError ? e.kind : 'unknown';
+      setToast(
+        kind === 'consent'
+          ? { tone: 'warning', message: t('journal.consentRequired') }
+          : kind === 'offline'
+            ? { tone: 'warning', message: t('journal.actionOffline') }
+            : { tone: 'error', message: t('journal.saveMessageFailed') },
+      );
+    } finally {
+      saving.current = false;
+    }
+  };
+
+  const trialRemaining = state.trialRemaining ?? entitlement.trialRemaining;
+  const empty = state.messages.length === 0 && !state.loading;
+  const showTrial = !entitlement.active && trialRemaining > 0;
+  const lastUserKey = [...state.messages].reverse().find((m) => m.role === 'user')?.key;
+
+  return (
+    <Screen
+      padded={false}
+      avoidKeyboard
+      footer={
+        <View className="px-gutter">
+          <ChatComposer
+            value={draft}
+            onChangeText={setDraft}
+            onSend={onSend}
+            sendDisabled={chat.busy}
+            maxLength={MAX_MESSAGE_CHARS}
+            onMic={inProgress}
+          />
+        </View>
+      }
+      // The chat keeps a plain header: no veil, and messages stop below it.
+      pinHeader={false}
+      header={
+        <>
+          <TopBar
+            menu
+            menuDisabled={chat.busy}
+            title={t('nav.chat')}
+            action="more"
+            actionVariant="plain"
+            actionLabel={t('a11y.more')}
+            onActionPress={() => setMenuOpen(true)}
+          />
+          {showTrial ? (
+            <TrialCounter
+              remaining={trialRemaining}
+              total={entitlement.trialTotal}
+              className="mt-xxs"
+              onPress={() => router.push('/paywall')}
+            />
+          ) : null}
+        </>
+      }>
+      <ScrollView
+        ref={scroll}
+        className="flex-1 px-gutter"
+        // Top padding keeps the first item off the header and the free-replies pill.
+        contentContainerClassName="gap-lg pt-sm pb-md"
+        onScroll={onScroll}
+        scrollEventThrottle={100}
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() => {
+          if (atBottom.current) scroll.current?.scrollToEnd({ animated: true });
+        }}>
+        {empty ? (
+          <View className="items-center gap-xxs pb-xl pt-xl">
+            <Text variant="greeting" center>
+              {name ? t('chat.greeting', { name }) : t('chat.title')}
+            </Text>
+            <Text variant="caption" tone="default" center>
+              {t('chat.prompt')}
+            </Text>
+          </View>
+        ) : null}
+
+        {state.hasMore ? (
+          <TextButton title={t('chat.loadOlder')} onPress={() => void chat.loadOlder()} className="self-center" />
+        ) : null}
+
+        {state.messages.map((m) => (
+          <MessageView
+            key={m.key}
+            m={m}
+            userLabel={profile?.displayName}
+            crisisLines={storedCrisis}
+            onRetry={
+              m.role === 'user' && m.status === 'failed' && m.key === lastUserKey && canRetry(state.notice)
+                ? () => chat.retry(m.key)
+                : undefined
+            }
+            failedMessage={t(failureCopy(state.notice, !!m.id))}
+            heldMessage={t('chat.held')}
+            onCopy={copyQuietly}
+            onListen={inProgress}
+            onMenu={setPicked}
+            onOpenEntry={(id) => router.push({ pathname: '/journal/[id]', params: { id } })}
+            footer={marksFor(m)}
+          />
+        ))}
+
+        {state.phase === 'sending' || state.phase === 'thinking' ? (
+          <TypingIndicator label={thinkingLong ? t('chat.thinkingLong') : undefined} />
+        ) : null}
+
+        {state.crisis ? <CrisisCard lines={state.crisis} /> : null}
+
+        <NoticeView
+          notice={state.notice}
+          onPaywall={() => router.push('/paywall')}
+          onSettings={() => router.push('/settings')}
+          onUndo={(id) => void chat.undoClear(id)}
+          onDismiss={chat.dismissNotice}
+        />
+      </ScrollView>
+
+      <View className="px-gutter">
+        <Toast visible={!!toast} tone={toast?.tone} message={toast?.message ?? ''} onHide={hideToast} />
+      </View>
+
+      <Dialog
+        single
+        visible={soon}
+        onClose={closeSoon}
+        title={t('common.inProgressTitle')}
+        message={t('common.inProgress')}
+        confirmLabel={t('common.understood')}
+        onConfirm={closeSoon}
+      />
+
+      <Sheet visible={!!picked} onClose={() => setPicked(null)} title={t('journal.messageActions')}>
+        <ListRow
+          icon="copy"
+          title={t('chat.copy')}
+          showChevron={false}
+          onPress={() => {
+            const m = picked;
+            setPicked(null);
+            if (m) void onCopy(m.text);
+          }}
+        />
+        <ListRow
+          icon="bookmark"
+          title={t('journal.saveToJournal')}
+          showChevron={false}
+          onPress={() => {
+            const m = picked;
+            setPicked(null);
+            if (m) void onSaveToJournal(m);
+          }}
+        />
+      </Sheet>
+
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('nav.chat')}>
+        <ListRow
+          icon="plus"
+          title={t('chat.newConversation')}
+          showChevron={false}
+          disabled={chat.busy}
+          onPress={() => {
+            router.setParams({ c: undefined });
+            chat.startNew();
+            setDraft('');
+            setMenuOpen(false);
+          }}
+        />
+        <ListRow
+          icon="clock"
+          title={t('chat.history')}
+          showChevron={false}
+          disabled={chat.busy}
+          onPress={() => {
+            setMenuOpen(false);
+            router.push('/conversations');
+          }}
+        />
+        <ListRow
+          icon="trash"
+          title={t('chat.clear')}
+          showChevron={false}
+          destructive
+          disabled={chat.busy || !state.conversationId}
+          onPress={() => {
+            setMenuOpen(false);
+            setConfirmClear(true);
+          }}
+        />
+      </Sheet>
+
+      <Sheet visible={!!noteFor} onClose={() => setNoteFor(null)} title={t('marks.noteTitle')}>
+        <TextArea
+          value={noteDraft}
+          onChangeText={setNoteDraft}
+          placeholder={t('marks.notePlaceholder')}
+          maxLength={MAX_NOTE_CHARS}
+          minHeight={110}
+          autoFocus
+        />
+        <SecondaryButton title={t('marks.save')} onPress={() => void saveNote()} loading={noteSaving} className="mt-md" />
+      </Sheet>
+
+      <Dialog
+        visible={confirmClear}
+        onClose={() => setConfirmClear(false)}
+        title={t('chat.clearTitle')}
+        message={t('chat.clearMessage')}
+        confirmLabel={t('chat.clear')}
+        destructive
+        onConfirm={() => {
+          setConfirmClear(false);
+          router.setParams({ c: undefined });
+          void chat.clear();
+        }}
+      />
+    </Screen>
+  );
+}
+
+function canRetry(n: Notice | null) {
+  return !n || n.kind !== 'error' || n.retryable;
+}
+
+/** `saved`: the server accepted the message before failing, so saying "your message is saved" is true. */
+function failureCopy(n: Notice | null, saved: boolean) {
+  if (n?.kind !== 'error') return 'chat.sendFailed' as const;
+  switch (n.code) {
+    case 'NETWORK':
+      return 'states.offlineMessage' as const;
+    case 'CREDIT_EXHAUSTED':
+      return 'chat.errorUnavailable' as const;
+    case 'MAINTENANCE':
+      return 'states.maintenanceMessage' as const;
+    case 'UNAUTHENTICATED':
+      return 'chat.errorSession' as const;
+    case 'AI_UNAVAILABLE':
+      return saved ? ('chat.errorAi' as const) : ('chat.sendFailed' as const);
+    default:
+      return 'chat.sendFailed' as const;
+  }
+}
+
+function MessageView({
+  m,
+  userLabel,
+  crisisLines,
+  onRetry,
+  failedMessage,
+  heldMessage,
+  onCopy,
+  onListen,
+  onMenu,
+  onOpenEntry,
+  footer,
+}: {
+  m: UiMessage;
+  userLabel?: string;
+  crisisLines: CrisisLine[];
+  onRetry?: () => void;
+  failedMessage: string;
+  heldMessage: string;
+  onCopy: (text: string) => void;
+  onListen: () => void;
+  onMenu: (m: UiMessage) => void;
+  onOpenEntry: (id: string) => void;
+  /** The testing marks under a finished answer, on tester accounts. */
+  footer?: ReactNode;
+}) {
+  if (m.role === 'event') {
+    if (m.eventKind === 'crisis_resources') return <CrisisCard lines={crisisLines} />;
+    if (m.eventKind === 'journal_shared') {
+      const ref = m.eventRef;
+      return <SharedEntryCard onPress={ref ? () => onOpenEntry(ref) : undefined} />;
+    }
+    return null;
+  }
+  // Only a message the server has stored in full can be saved to the journal.
+  const menu = m.id && (m.status === 'done' || m.status === 'sent') ? () => onMenu(m) : undefined;
+  if (m.role === 'assistant') {
+    return (
+      <ChatBubble
+        sender="ai"
+        text={m.text}
+        showActions={m.status === 'done'}
+        onCopy={() => onCopy(m.text)}
+        onListen={onListen}
+        onLongPress={menu}
+        footer={footer}
+      />
+    );
+  }
+  return (
+    <View className={m.status === 'sending' ? 'opacity-60' : undefined}>
+      <ChatBubble sender="user" label={userLabel} text={m.text} onLongPress={menu} />
+      {m.status === 'failed' ? <MessageFailed message={failedMessage} onRetry={onRetry} className="pt-xxs" /> : null}
+      {m.status === 'held' ? <InlineMessage tone="info" message={heldMessage} className="self-end pt-xxs" /> : null}
+    </View>
+  );
+}
+
+function NoticeView({
+  notice,
+  onPaywall,
+  onSettings,
+  onUndo,
+  onDismiss,
+}: {
+  notice: Notice | null;
+  onPaywall: () => void;
+  onSettings: () => void;
+  onUndo: (conversationId: string) => void;
+  onDismiss: () => void;
+}) {
+  const { t } = useI18n();
+  if (!notice) return null;
+  switch (notice.kind) {
+    case 'paywall':
+      return <Banner tone="info" message={notice.message} actionLabel={t('membership.activate')} onAction={onPaywall} />;
+    case 'dailyCap':
+      // Her warm message, no error styling (screen 19).
+      return <LimitReachedState message={notice.message} className="flex-none py-lg" />;
+    case 'aiPaused':
+      return <Banner tone="info" message={notice.message} actionLabel={t('chat.aiPausedAction')} onAction={onSettings} />;
+    case 'cleared':
+      return (
+        <Banner
+          tone="info"
+          message={t('chat.cleared')}
+          actionLabel={t('chat.undo')}
+          onAction={() => onUndo(notice.conversationId)}
+          onDismiss={onDismiss}
+        />
+      );
+    default:
+      return null;
+  }
+}
