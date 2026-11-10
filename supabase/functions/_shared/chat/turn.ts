@@ -19,6 +19,7 @@ import { classifierMessages, type CrisisLevel, forcesBoundary, keywordScreen, ma
 import { maxLimits, retrievalQuery } from "../pipeline/query.ts";
 import { search, split, unaccent, words } from "../pipeline/pyre.ts";
 import type { StyleRules } from "../pipeline/checks.ts";
+import { buildVariantMessages, PassGate, VARIANT_MAX_TOKENS, variantOf } from "../pipeline/variants.ts";
 
 export class DbError extends Error {
   constructor(readonly code: string, message: string) {
@@ -83,6 +84,7 @@ const CONFIG_KEYS = [
   "chat.limit_messages", "crisis.patterns", "crisis.resources",
   "model.reply", "model.reply_degraded", "model.planner", "model.embedding",
   "model.params", "model.prices", "chat.temperature", "chat.max_tokens_per_word", "memory.search_limit",
+  "chat.variants", "chat.reasoning_allowance",
 ];
 
 // "what I told you last time" -- the only turns that search layer 4.
@@ -280,15 +282,34 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
     const recheck = ctx.profileStale === true && level === "none" && p.mode !== "HRANICE" && p.mode !== "PAUZA";
     if (recheck) person.profileStale = true;
 
-    const { messages, used } = buildMessages({
+    const built = buildMessages({
       lib: kb.lib, userMsg, person, history, plan: p, pools, recent,
       crisis: { level, resources }, journalEntry: entry, searchText: opensOnEntry ? said : null,
     });
+    let { messages, used } = built;
+
+    // Claudia's comparison (22 Oct 2026): B and C replace the prompt, the gate and
+    // the length limit. Planner, crisis screen and retrieval still run, so the
+    // crisis layer and the stored mode are the same as in A.
+    const variant = variantOf(cfg["chat.variants"], userId);
+    if (variant !== "A") {
+      messages = buildVariantMessages(variant, {
+        person, history, userMsg, moments: pools.memory ?? [], journalEntry: entry, crisis: { level, resources },
+      });
+      used = { ...used, knowledge: [], rules: [], videos: [], guides: [], clients: [], principles: [], framework: [], guideMap: [], exemplars: [] };
+    }
 
     // 5. Generate through the sentence gate --------------------------------------------
-    const gate = new SentenceGate({ rules: kb.rules, mode: p.mode, gender, leak: kb.leak, allowedVerbatim: [kb.identity] });
+    const gate = variant === "A"
+      ? new SentenceGate({ rules: kb.rules, mode: p.mode, gender, leak: kb.leak, allowedVerbatim: [kb.identity] })
+      : new PassGate() as unknown as SentenceGate; // never stops, so no corrective continuation
     const perWord = Number(cfg["chat.max_tokens_per_word"] ?? 3);
-    const maxTokens = Math.ceil(hi * 1.3 * perWord) + 64;
+    // The reply models reason before they write, and those hidden tokens count
+    // against max_completion_tokens. Without an allowance the reasoning used up
+    // the word budget and replies stopped mid-word (Test 01, 26 Oct 2026).
+    // Length is still held by the mode's word range and the too_long check.
+    const reasoning = Number(cfg["chat.reasoning_allowance"] ?? 2000);
+    const maxTokens = variant === "A" ? Math.ceil(hi * 1.3 * perWord) + 64 + reasoning : VARIANT_MAX_TOKENS + reasoning;
     const hardFailures: string[] = [];
     let released = 0;
     let firstDelta = false;
@@ -365,8 +386,10 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
     mark("generated");
 
     // 6. Whole-reply checks (logged; the text is already on screen) -------------------
-    const final = finalChecks(reply, kb.rules, { mode: p.mode, budget: [lo, hi], name: person.name, vocativeForm: person.vocative, gender });
-    hardFailures.push(...final.map((f) => f.rule));
+    if (variant === "A") {
+      const final = finalChecks(reply, kb.rules, { mode: p.mode, budget: [lo, hi], name: person.name, vocativeForm: person.vocative, gender });
+      hardFailures.push(...final.map((f) => f.rule));
+    }
 
     // 7. Store --------------------------------------------------------------------------
     const retrievals = [
@@ -389,7 +412,7 @@ export async function runTurn(deps: Deps, userId: string, req: ChatRequest, emit
       p_user: userId, p_user_message_id: userMessageId, p_reply: reply, p_mode: p.mode,
       p_meta: {
         model: replyModel, plannerHow: plannerHowOf(p.how),
-        understanding: { vim: p.vim ?? [], missing: p.chybi_ctyri ?? [], how: p.how, persona: kb.version },
+        understanding: { vim: p.vim ?? [], missing: p.chybi_ctyri ?? [], how: p.how, persona: kb.version, variant },
         tokensIn: sum((u) => u.prompt_tokens ?? 0), tokensCached: sum((u) => u.prompt_tokens_details?.cached_tokens ?? 0),
         tokensOut: sum((u) => u.completion_tokens ?? 0),
         costEur: replyCalls.reduce((a, c) => a + (c.usage ? cost(cfg["model.prices"], c.model, c.usage) : 0), 0),
