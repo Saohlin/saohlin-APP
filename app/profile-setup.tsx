@@ -12,6 +12,7 @@ import {
   SelectField,
   Sheet,
   Text,
+  TextButton,
   TextField,
   Title,
   useDatePicker,
@@ -163,6 +164,16 @@ export default function ProfileSetup() {
               </Pressable>
             </View>
           </View>
+          {/* Returning users who reinstalled or switched phones land here first. Only
+             shown before an account exists; a signed-in user missing a profile stays. */}
+          {session ? null : (
+            <View className="flex-row items-center justify-center gap-xxs pt-md">
+              <Text variant="micro" tone="tertiary">
+                {t('auth.haveAccount')}
+              </Text>
+              <TextButton title={t('auth.signIn')} onPress={() => router.push('/sign-in')} />
+            </View>
+          )}
         </View>
       }>
       <Title className="pt-xxl">{t('onboarding.profileTitle')}</Title>
