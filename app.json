@@ -64,6 +64,12 @@
       "typedRoutes": true
     },
     "backgroundColor": "#DCD5DA",
-    "owner": "saohlin.com"
+    "owner": "saohlin.com",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d06cb3e8-4999-4986-9cbb-7f0facd960f3"
+      }
+    }
   }
 }
